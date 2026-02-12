@@ -2723,7 +2723,7 @@ msgstr ""
 msgid "Rename/move detection &keys:"
 msgstr ""
 
-msgid "&Merge renamed items into a single item"
+msgid "M&erge renames and moves:"
 msgstr ""
 
 msgid "File patterns:"
@@ -3985,6 +3985,9 @@ msgstr " (இடது மற்றும் வலது ஒரே மாதி
 msgid " (Left and middle are identical)"
 msgstr " (இடது மற்றும் நடு ஒரே மாதிரியானவை)"
 
+msgid " (paths differ)"
+msgstr ""
+
 msgid "Text files are different"
 msgstr "உரை கோப்புகள் வேறுபட்டவை"
 
@@ -4012,6 +4015,12 @@ msgstr ""
 msgid "Detect renames and moves"
 msgstr ""
 
+msgid "Merge renames"
+msgstr ""
+
+msgid "Merge renames and moves"
+msgstr ""
+
 msgid "Renamed"
 msgstr ""
 
@@ -4027,6 +4036,9 @@ msgstr ""
 
 #, c-format
 msgid "%1 (set %2): "
+msgstr ""
+
+msgid "Some moved items have been merged.\nIn Tree Mode, these items may appear in positions that do not reflect the actual folder structure, which can be confusing.\nSwitch to Flat Mode?"
 msgstr ""
 
 #, c-format
@@ -5277,6 +5289,9 @@ msgstr ""
 msgid "e.g. %1"
 msgstr ""
 
+msgid "WinMerge detected a previous crash. Please report this if possible."
+msgstr ""
+
 msgid "Prettification"
 msgstr "அழகானமாக்கல்"
 
@@ -5382,6 +5397,9 @@ msgstr "அழகுபடுத்து XML"
 msgid "Prettify YAML"
 msgstr "அழகுபடுத்து YAML"
 
+msgid "Prettify PO"
+msgstr ""
+
 msgid "Preview Graphviz"
 msgstr "முன்னோட்டம் வரைகலைவிச்"
 
@@ -5405,6 +5423,9 @@ msgstr "YAML தரவை வினவவும்..."
 
 msgid "Validate HTML"
 msgstr "உஉகுமொ ஐ சரிபார்"
+
+msgid "Validate PO"
+msgstr ""
 
 msgid "Disassemble JVM Bytecode"
 msgstr "சேவிஎம் பைட்குறியீட்டை பிரித்தெடு"
@@ -5554,6 +5575,9 @@ msgstr ""
 "YAML ப்ரீட்டியர் (yq).\r\n"
 "வாதங்கள்: yq வடிகட்டி/கட்டளை வரி விருப்பங்கள்."
 
+msgid "PO Prettier (gettext msgcat).\r\nArguments: msgcat command line options."
+msgstr ""
+
 msgid ""
 "Graphviz Previewer.\r\n"
 "Arguments: dot command line options."
@@ -5577,14 +5601,14 @@ msgstr ""
 
 msgid ""
 "CSV Querier (q).\r\n"
-"Arguments: SQL statement/q comannd line options."
+"Arguments: SQL statement/q command line options."
 msgstr ""
 "காபிம வினாவி (q).\r\n"
 "வாதங்கள்: கவிமொ அறிக்கை/q கட்டளை வரி விருப்பங்கள்."
 
 msgid ""
 "TSV Querier (q).\r\n"
-"Arguments: SQL statement/q comannd line options."
+"Arguments: SQL statement/q command line options."
 msgstr ""
 "தாபிம வினாவி (q).\r\n"
 "வாதங்கள்: கவிமொ அறிக்கை/q கட்டளை வரி விருப்பங்கள்."
@@ -5609,6 +5633,9 @@ msgid ""
 msgstr ""
 "உஉகுமொ சரிபார்ப்பான் (tidy-html5).\r\n"
 "வாதங்கள்: நேர்த்தியான கட்டளை வரி விருப்பங்கள்."
+
+msgid "PO Validator (gettext msgfmt).\r\nArguments: msgfmt command line options."
+msgstr ""
 
 msgid ""
 "JVM bytecode disassembler (javap).\r\n"

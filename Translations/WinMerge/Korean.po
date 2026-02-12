@@ -3172,8 +3172,8 @@ msgstr "이름 바꾸기/이동 감지(&R):"
 msgid "Rename/move detection &keys:"
 msgstr "감지 키 이름 바꾸기/이동(&K):"
 
-msgid "&Merge renamed items into a single item"
-msgstr "이름이 변경된 항목을 단일 항목으로 병합(&M)"
+msgid "M&erge renames and moves:"
+msgstr ""
 
 msgid "File patterns:"
 msgstr "파일 패턴:"
@@ -4555,6 +4555,9 @@ msgstr " (왼쪽과 오른쪽은 동일합니다)"
 msgid " (Left and middle are identical)"
 msgstr " (왼쪽과 가운데는 동일합니다)"
 
+msgid " (paths differ)"
+msgstr ""
+
 #, c-format
 msgid "Text files are different"
 msgstr "텍스트 파일이 다릅니다"
@@ -4583,6 +4586,12 @@ msgstr "이름 바꾸기 감지"
 msgid "Detect renames and moves"
 msgstr "이름 바꾸기 및 이동 감지"
 
+msgid "Merge renames"
+msgstr ""
+
+msgid "Merge renames and moves"
+msgstr ""
+
 msgid "Renamed"
 msgstr "이름 바뀜"
 
@@ -4599,6 +4608,9 @@ msgstr "(%1개 항목)"
 #, c-format
 msgid "%1 (set %2): "
 msgstr "%1 (세트 %2): "
+
+msgid "Some moved items have been merged.\nIn Tree Mode, these items may appear in positions that do not reflect the actual folder structure, which can be confusing.\nSwitch to Flat Mode?"
+msgstr ""
 
 #, c-format
 msgid "Elapsed time: %ld ms"
@@ -5945,6 +5957,9 @@ msgstr "시스템을 따름"
 msgid "e.g. %1"
 msgstr "예: %1"
 
+msgid "WinMerge detected a previous crash. Please report this if possible."
+msgstr ""
+
 msgid "Prettification"
 msgstr "꾸미기"
 
@@ -6050,6 +6065,9 @@ msgstr "XML 꾸미기"
 msgid "Prettify YAML"
 msgstr "YAML 꾸미기"
 
+msgid "Prettify PO"
+msgstr ""
+
 msgid "Preview Graphviz"
 msgstr "Graphviz 미리보기"
 
@@ -6073,6 +6091,9 @@ msgstr "YAML 데이터 쿼리..."
 
 msgid "Validate HTML"
 msgstr "HTML 유효성 검사"
+
+msgid "Validate PO"
+msgstr ""
 
 msgid "Disassemble JVM Bytecode"
 msgstr "JVM 바이트코드 분해"
@@ -6222,6 +6243,9 @@ msgstr ""
 "'yq command'를 사용하여 YAML 꾸미기입니다. \r\n"
 "인수: yq 명령에 전달된 필터 또는 명령줄 옵션입니다."
 
+msgid "PO Prettier (gettext msgcat).\r\nArguments: msgcat command line options."
+msgstr ""
+
 msgid ""
 "Graphviz Previewer.\r\n"
 "Arguments: dot command line options."
@@ -6245,14 +6269,14 @@ msgstr ""
 
 msgid ""
 "CSV Querier (q).\r\n"
-"Arguments: SQL statement/q comannd line options."
+"Arguments: SQL statement/q command line options."
 msgstr ""
 "q 명령을 사용하는 CSV 쿼리어입니다. \r\n"
 "인수: q 명령에 전달된 SQL문 또는 명령줄 옵션입니다."
 
 msgid ""
 "TSV Querier (q).\r\n"
-"Arguments: SQL statement/q comannd line options."
+"Arguments: SQL statement/q command line options."
 msgstr ""
 "q 명령을 사용하는 TSV 쿼리어입니다. \n"
 "인수: q 명령에 전달된 SQL문 또는 명령줄 옵션입니다."
@@ -6277,6 +6301,9 @@ msgid ""
 msgstr ""
 "Tidy-html5를 사용하여 HTML 유효성 검사입니다. \r\n"
 "인수: tidy 명령에 전달된 명령줄 옵션입니다."
+
+msgid "PO Validator (gettext msgfmt).\r\nArguments: msgfmt command line options."
+msgstr ""
 
 msgid ""
 "JVM bytecode disassembler (javap).\r\n"

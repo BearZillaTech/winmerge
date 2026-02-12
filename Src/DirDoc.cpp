@@ -271,7 +271,6 @@ void CDirDoc::InitDiffContext(CDiffContext *pCtxt)
 		pCtxt->m_pAdditionalCompareExpression->SetDiffContext(pCtxt);
 	}
 
-	pCtxt->m_pRenameMoveDetection.reset();
 	if (pOptions->GetInt(OPT_CMP_RENAME_MOVE_DETECTION) > 0)
 	{
 		const String renameMoveKeyExpression = pOptions->GetString(OPT_CMP_RENAME_MOVE_KEY);
@@ -372,6 +371,9 @@ void CDirDoc::Rescan()
 	// Don't clear if only scanning selected items
 	if (!m_bMarkedRescan && !m_bGeneratingReport)
 	{
+		if (m_pCtxt->m_pRenameMoveDetection)
+			m_pCtxt->m_pRenameMoveDetection->RemoveAllGroups();
+		m_pCtxt->m_pRenameMoveDetection.reset();
 		m_pCtxt->RemoveAll();
 		m_pCtxt->InitDiffItemList();
 	}
@@ -461,8 +463,19 @@ void CDirDoc::Rescan()
 		m_diffThread.SetCollectFunction([](DiffFuncStruct* myStruct) {
 			int nItems = DirScan_UpdateMarkedItems(myStruct, nullptr);
 			myStruct->context->m_pCompareStats->IncreaseTotalItems(nItems);
+			auto* pRenameMoveDetection = myStruct->context->m_pRenameMoveDetection.get();
+			if (pRenameMoveDetection)
+			{
+				bool doMoveDetection = GetOptionsMgr()->GetInt(OPT_CMP_RENAME_MOVE_DETECTION) > 1;
+				pRenameMoveDetection->Detect(*myStruct->context, doMoveDetection);
+				int nRenameMoveMergeMode = GetOptionsMgr()->GetInt(OPT_CMP_RENAME_MOVE_MERGE_MODE);
+				if (nRenameMoveMergeMode > 0)
+					pRenameMoveDetection->Merge(*myStruct->context, nRenameMoveMergeMode > 1);
+			}
 			});
 		m_diffThread.SetCompareFunction([](DiffFuncStruct* myStruct) {
+			if (myStruct->context->m_pRenameMoveDetection)
+				myStruct->m_collectCompletedEvent.wait();
 			DirScan_CompareRequestedItems(myStruct, nullptr);
 			});
 		m_diffThread.SetMarkedRescan(true);
@@ -481,8 +494,9 @@ void CDirDoc::Rescan()
 			{
 				bool doMoveDetection = GetOptionsMgr()->GetInt(OPT_CMP_RENAME_MOVE_DETECTION) > 1;
 				myStruct->context->m_pRenameMoveDetection->Detect(*myStruct->context, doMoveDetection);
-				if (GetOptionsMgr()->GetBool(OPT_CMP_MERGE_RENAMED_ITEMS))
-					myStruct->context->m_pRenameMoveDetection->Merge(*myStruct->context);
+				int nRenameMoveMergeMode = GetOptionsMgr()->GetInt(OPT_CMP_RENAME_MOVE_MERGE_MODE);
+				if (nRenameMoveMergeMode > 0)
+					myStruct->context->m_pRenameMoveDetection->Merge(*myStruct->context, nRenameMoveMergeMode > 1);
 			}
 		});
 		m_diffThread.SetCompareFunction([](DiffFuncStruct* myStruct) {

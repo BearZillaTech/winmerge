@@ -12,7 +12,7 @@ msgstr ""
 "Project-Id-Version: WinMerge\n"
 "Report-Msgid-Bugs-To: https://github.com/WinMerge/winmerge/issues/\n"
 "POT-Creation-Date: 2025-08-24 14:39+0000\n"
-"PO-Revision-Date: 2026-01-26 11:11+0300\n"
+"PO-Revision-Date: 2026-02-05 17:00+0300\n"
 "Last-Translator: Ahmet Murat Özhan <ozhanmurat@gmail.com>\n"
 "Language-Team: Turkish <winmerge-translate@lists.sourceforge.net>\n"
 "Language: tr\n"
@@ -2706,8 +2706,8 @@ msgstr "&Yeniden Adlandırma/Taşıma Algılama:"
 msgid "Rename/move detection &keys:"
 msgstr "Yeniden Adlandırma/Taşıma Algılama &Tuşları:"
 
-msgid "&Merge renamed items into a single item"
-msgstr "Yeniden adlandırılan ögeleri tek &ögede birleştir"
+msgid "M&erge renames and moves:"
+msgstr ""
 
 msgid "File patterns:"
 msgstr "Dosya modelleri:"
@@ -3958,6 +3958,9 @@ msgstr " (Sol ve sağ dosya aynı)"
 msgid " (Left and middle are identical)"
 msgstr " (Sol ve orta dosya aynı)"
 
+msgid " (paths differ)"
+msgstr ""
+
 msgid "Text files are different"
 msgstr "Metin dosyaları farklı"
 
@@ -3985,6 +3988,12 @@ msgstr "Yeniden adlandırmaları algıla"
 msgid "Detect renames and moves"
 msgstr "Yeniden adlandırmaları ve taşımaları algıla"
 
+msgid "Merge renames"
+msgstr ""
+
+msgid "Merge renames and moves"
+msgstr ""
+
 msgid "Renamed"
 msgstr "Yeniden adlandırıldı"
 
@@ -4001,6 +4010,9 @@ msgstr "(%1 öge)"
 #, c-format
 msgid "%1 (set %2): "
 msgstr "%1 (%2 kümesi): "
+
+msgid "Some moved items have been merged.\nIn Tree Mode, these items may appear in positions that do not reflect the actual folder structure, which can be confusing.\nSwitch to Flat Mode?"
+msgstr ""
 
 #, c-format
 msgid "Elapsed time: %ld ms"
@@ -5258,6 +5270,9 @@ msgstr "Sistem ayarını seç"
 msgid "e.g. %1"
 msgstr "örn. %1"
 
+msgid "WinMerge detected a previous crash. Please report this if possible."
+msgstr "WinMerge, önceki bir çökme tespit etti. Mümkünse lütfen bunu bildirin."
+
 msgid "Prettification"
 msgstr "Sadeleştirme"
 
@@ -5363,6 +5378,9 @@ msgstr "XML sadeleştirme"
 msgid "Prettify YAML"
 msgstr "YAML sadeleştirme"
 
+msgid "Prettify PO"
+msgstr ""
+
 msgid "Preview Graphviz"
 msgstr "Graphviz ön izlemesi"
 
@@ -5386,6 +5404,9 @@ msgstr "YAML verilerini sorgula..."
 
 msgid "Validate HTML"
 msgstr "HTML kodunu doğrula"
+
+msgid "Validate PO"
+msgstr ""
 
 msgid "Disassemble JVM Bytecode"
 msgstr "JVM bayt kodunu çözümle"
@@ -5535,6 +5556,9 @@ msgstr ""
 "YAML iyileştirici: yq komutu. \r\n"
 "Parametreler: yq komutuna aktarılacak süzgeç ya da komut satırı parametreleri."
 
+msgid "PO Prettier (gettext msgcat).\r\nArguments: msgcat command line options."
+msgstr ""
+
 msgid ""
 "Graphviz Previewer.\r\n"
 "Arguments: dot command line options."
@@ -5558,14 +5582,14 @@ msgstr ""
 
 msgid ""
 "CSV Querier (q).\r\n"
-"Arguments: SQL statement/q comannd line options."
+"Arguments: SQL statement/q command line options."
 msgstr ""
 "CSV sorgulayıcı: q komutu. \r\n"
 "Parametreler: q komutuna aktarılacak SQL ifadesi ya da komut satırı parametreleri."
 
 msgid ""
 "TSV Querier (q).\r\n"
-"Arguments: SQL statement/q comannd line options."
+"Arguments: SQL statement/q command line options."
 msgstr ""
 "TSV sorgulayıcı: q komutu. \r\n"
 "Parametreler: q komutuna aktarılacak SQL ifadesi ya da komut satırı parametreleri."
@@ -5590,6 +5614,9 @@ msgid ""
 msgstr ""
 "HTML doğrulayıcı: tidy-html5. \r\n"
 "Parametreler: Tidy komutuna aktarılacak komut satırı parametreleri."
+
+msgid "PO Validator (gettext msgfmt).\r\nArguments: msgfmt command line options."
+msgstr ""
 
 msgid ""
 "JVM bytecode disassembler (javap).\r\n"

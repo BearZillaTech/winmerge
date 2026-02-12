@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: WinMerge\n"
 "Report-Msgid-Bugs-To: https://github.com/WinMerge/winmerge/issues/\n"
-"POT-Creation-Date: 2026-01-25 13:30+0000\n"
-"PO-Revision-Date: 2026-01-26 11:11+0200\n"
+"POT-Creation-Date: 2026-02-11 07:50+0000\n"
+"PO-Revision-Date: 2026-02-11 08:08+0200\n"
 "Last-Translator: Tichij <tichij@mail.com>\n"
 "Language-Team: Lithuanian <winmerge-translate@lists.sourceforge.net>\n"
 "Language: lt\n"
@@ -2691,8 +2691,8 @@ msgstr "Pe&rvardijimo/perkėlimo aptikimas:"
 msgid "Rename/move detection &keys:"
 msgstr "Pervardijimo/perkėlimo aptikimo ra&ktai:"
 
-msgid "&Merge renamed items into a single item"
-msgstr "Sulieti pervardytus ele&mentus į vieną elementą"
+msgid "M&erge renames and moves:"
+msgstr "Suli&eti pervardijimus ir perkėlimus:"
 
 msgid "File patterns:"
 msgstr "Failų šablonai:"
@@ -3711,6 +3711,9 @@ msgstr " (Kairysis ir dešinysis yra vienodi)"
 msgid " (Left and middle are identical)"
 msgstr " (Kairysis ir vidurinis yra vienodi)"
 
+msgid " (paths differ)"
+msgstr " (keliai skiriasi)"
+
 msgid "Text files are different"
 msgstr "Tekstiniai failai skiriasi"
 
@@ -3738,6 +3741,12 @@ msgstr "Aptikti pervardijimą"
 msgid "Detect renames and moves"
 msgstr "Aptikti pervardijimą ir perkėlimą"
 
+msgid "Merge renames"
+msgstr "Sulieti pervardijimus"
+
+msgid "Merge renames and moves"
+msgstr "Sulieti pervardijimus ir perkėlimus"
+
 msgid "Renamed"
 msgstr "Pervardinta"
 
@@ -3754,6 +3763,9 @@ msgstr "(%1 elementai)"
 #, c-format
 msgid "%1 (set %2): "
 msgstr "%1 (nust. %2): "
+
+msgid "Some moved items have been merged.\nIn Tree Mode, these items may appear in positions that do not reflect the actual folder structure, which can be confusing.\nSwitch to Flat Mode?"
+msgstr "Kai kurie perkelti elementai buvo sujungti.\nMedžio režimu šie elementai gali būti rodomi pozicijose, neatspindinčiose tikrosios aplanko struktūros, kas gali kelti painiavą.\nPerjungti į plokščiąjį režimą?"
 
 #, c-format
 msgid "Elapsed time: %ld ms"
@@ -4787,6 +4799,9 @@ msgstr "Kaip sistemos"
 msgid "e.g. %1"
 msgstr "pvz. %1"
 
+msgid "WinMerge detected a previous crash. Please report this if possible."
+msgstr "„WinMerge“ aptiko, kad buvo gedimas. Jei įmanoma, praneškite apie tai."
+
 msgid "Prettification"
 msgstr "Sutvarkymas"
 
@@ -4892,6 +4907,9 @@ msgstr "Sutvarkyti XML"
 msgid "Prettify YAML"
 msgstr "Sutvarkyti YAML"
 
+msgid "Prettify PO"
+msgstr "Sutvarkyti PO"
+
 msgid "Preview Graphviz"
 msgstr "„Graphviz“ peržiūra"
 
@@ -4915,6 +4933,9 @@ msgstr "Pateikti YAML duomenų užklausą..."
 
 msgid "Validate HTML"
 msgstr "Patikrinti HTML"
+
+msgid "Validate PO"
+msgstr "Patikrinti PO"
 
 msgid "Disassemble JVM Bytecode"
 msgstr "Dekompiliuoti JVM baitinį kodą"
@@ -4986,6 +5007,9 @@ msgstr "XML tvarkytojas (tidy-html5).\r\nArgumentai: tidy command line options."
 msgid "YAML Prettier (yq).\r\nArguments: yq filter/command line options."
 msgstr "YAML tvarkytojas (yq).\r\nArgumentai: yq filter/command line options."
 
+msgid "PO Prettier (gettext msgcat).\r\nArguments: msgcat command line options."
+msgstr "PO tvarkytojas (gettext msgcat).\r\nArgumentai: msgcat command line options."
+
 msgid "Graphviz Previewer.\r\nArguments: dot command line options."
 msgstr "Graphviz peržiūrėtojas.\r\nArgumentai: dot command line options."
 
@@ -4995,11 +5019,11 @@ msgstr "Markdown peržiūrėtojas.\r\nArgumentai: md2html command line options."
 msgid "PlantUML Previewer.\r\nArguments: plantuml.jar command line options."
 msgstr "PlantUML peržiūrėtojas.\r\nArgumentai: plantuml.jar command line options."
 
-msgid "CSV Querier (q).\r\nArguments: SQL statement/q comannd line options."
-msgstr "CSV užklausėjas (q).\r\nArgumentai: SQL statement/q comannd line options."
+msgid "CSV Querier (q).\r\nArguments: SQL statement/q command line options."
+msgstr "CSV užklausėjas (q).\r\nArgumentai: SQL statement/q command line options."
 
-msgid "TSV Querier (q).\r\nArguments: SQL statement/q comannd line options."
-msgstr "TSV užklausėjas (q).\r\nArgumentai: SQL statement/q comannd line options."
+msgid "TSV Querier (q).\r\nArguments: SQL statement/q command line options."
+msgstr "TSV užklausėjas (q).\r\nArgumentai: SQL statement/q command line options."
 
 msgid "JSON Querier (jq).\r\nArguments: jq filter/command line options."
 msgstr "JSON užklausėjas (jq).\r\nArgumentai: jq filter/command line options."
@@ -5009,6 +5033,9 @@ msgstr "YAML užklausėjas (yq).\r\nArgumentai: yq filter/command line options."
 
 msgid "HTML Validator (tidy-html5).\r\nArguments: tidy command line options."
 msgstr "HTML tikrintojas (tidy-html5).\r\nArgumentai: tidy command line options."
+
+msgid "PO Validator (gettext msgfmt).\r\nArguments: msgfmt command line options."
+msgstr "PO tikrintojas (gettext msgfmt).\r\nArgumentai: msgfmt command line options."
 
 msgid "JVM bytecode disassembler (javap).\r\nArguments: javap command line options."
 msgstr "JVM baitinio kodo dekompiliatorius (javap).\r\nArgumentai: javap command line options."
