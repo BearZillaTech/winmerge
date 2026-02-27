@@ -395,6 +395,15 @@ TEST_P(FilterExpressionTest, Literals)
 	EXPECT_TRUE(fe.Evaluate(di));
 	EXPECT_TRUE(fe.Parse("replace(array(\"abcd\"), \"cd\", \"\") = array(\"ab\")"));
 	EXPECT_TRUE(fe.Evaluate(di));
+	// Case-insensitive replace: search pattern matches regardless of case
+	EXPECT_TRUE(fe.Parse("replace(\"ABCD\", \"ab\", \"cd\") = \"cdCD\""));
+	EXPECT_TRUE(fe.Evaluate(di));
+	EXPECT_TRUE(fe.Parse("replace(\"TeSt\", \"test\", \"X\") = \"X\""));
+	EXPECT_TRUE(fe.Evaluate(di));
+	EXPECT_TRUE(fe.Parse("replace(\"Hello World\", \"hello\", \"Hi\") = \"Hi World\""));
+	EXPECT_TRUE(fe.Evaluate(di));
+	EXPECT_TRUE(fe.Parse("replace(array(\"TEST\", \"TeSt\"), \"test\", \"foo\") = array(\"foo\", \"foo\")"));
+	EXPECT_TRUE(fe.Evaluate(di));
 	EXPECT_TRUE(fe.Parse("at(array(\"ab\", \"cd\"), 0) == \"ab\""));
 	EXPECT_TRUE(fe.Evaluate(di));
 	EXPECT_TRUE(fe.Parse("at(array(\"ab\", \"cd\"), 1) == \"cd\""));
@@ -1616,7 +1625,7 @@ TEST_P(FilterExpressionTest, ReplaceWithList)
 	fe.optimize = GetParam().optimize;
 
 	// Create temporary directory path
-	const String tempDir = env::GetProgPath();
+	const String tempDir = env::GetTemporaryPath();
 	const String replaceListPath = paths::ConcatPath(tempDir, L"test_replacelist.txt");
 	const String regexReplaceListPath = paths::ConcatPath(tempDir, L"test_regex_replacelist.txt");
 
@@ -1624,6 +1633,7 @@ TEST_P(FilterExpressionTest, ReplaceWithList)
 	{
 		UniStdioFile file;
 		EXPECT_TRUE(file.OpenCreateUtf8(replaceListPath));
+		file.WriteBom();
 		file.WriteString(L"# Comment line\n");
 		file.WriteString(L"apple\tりんご\n");
 		file.WriteString(L"orange\tオレンジ\n");
@@ -1637,6 +1647,7 @@ TEST_P(FilterExpressionTest, ReplaceWithList)
 	{
 		UniStdioFile file;
 		EXPECT_TRUE(file.OpenCreateUtf8(regexReplaceListPath));
+		file.WriteBom();
 		file.WriteString(L"# Regex patterns\n");
 		file.WriteString(L"\\d+\t----\n");
 		file.WriteString(L"[a-z]+\t****\n");
@@ -1670,6 +1681,22 @@ TEST_P(FilterExpressionTest, ReplaceWithList)
 
 	// Array of strings
 	EXPECT_TRUE(fe.Parse("replaceWithList(array(\"apple\", \"banana\"), \"" + ucr::toUTF8(replaceListPath) + "\") == array(\"りんご\", \"バナナ\")"));
+	EXPECT_TRUE(fe.Evaluate(di));
+
+	// Case-insensitive: uppercase input matches lowercase pattern
+	EXPECT_TRUE(fe.Parse("replaceWithList(\"APPLE\", \"" + ucr::toUTF8(replaceListPath) + "\") == \"りんご\""));
+	EXPECT_TRUE(fe.Evaluate(di));
+
+	// Case-insensitive: mixed case input
+	EXPECT_TRUE(fe.Parse("replaceWithList(\"Apple is good\", \"" + ucr::toUTF8(replaceListPath) + "\") == \"りんご is good\""));
+	EXPECT_TRUE(fe.Evaluate(di));
+
+	// Case-insensitive: multiple mixed-case words
+	EXPECT_TRUE(fe.Parse("replaceWithList(\"ORANGE and Banana\", \"" + ucr::toUTF8(replaceListPath) + "\") == \"オレンジ and バナナ\""));
+	EXPECT_TRUE(fe.Evaluate(di));
+
+	// Case-insensitive: array with mixed case
+	EXPECT_TRUE(fe.Parse("replaceWithList(array(\"APPLE\", \"GRAPE\"), \"" + ucr::toUTF8(replaceListPath) + "\") == array(\"りんご\", \"ぶどう\")"));
 	EXPECT_TRUE(fe.Evaluate(di));
 
 	// Test regexReplaceWithList function
@@ -1724,7 +1751,7 @@ TEST_P(FilterExpressionTest, ReplaceWithListAdvanced)
 	fe.SetDiffContext(&ctxt);
 	fe.optimize = GetParam().optimize;
 
-	const String tempDir = env::GetProgPath();
+	const String tempDir = env::GetTemporaryPath();
 	const String replaceListPath = paths::ConcatPath(tempDir, L"test_replacelist2.txt");
 	const String regexReplaceListPath = paths::ConcatPath(tempDir, L"test_regex_replacelist2.txt");
 
@@ -1732,6 +1759,7 @@ TEST_P(FilterExpressionTest, ReplaceWithListAdvanced)
 	{
 		UniStdioFile file;
 		EXPECT_TRUE(file.OpenCreateUtf8(replaceListPath));
+		file.WriteBom();
 		file.WriteString(L"# Test special characters\n");
 		file.WriteString(L"C++\tCプラプラ\n");
 		file.WriteString(L"a\tb\tc\td\n"); // Extra tabs should be ignored
@@ -1745,6 +1773,7 @@ TEST_P(FilterExpressionTest, ReplaceWithListAdvanced)
 	{
 		UniStdioFile file;
 		EXPECT_TRUE(file.OpenCreateUtf8(regexReplaceListPath));
+		file.WriteBom();
 		file.WriteString(L"# Regex with captures\n");
 		file.WriteString(L"(\\d{4})-(\\d{2})-(\\d{2})\t$3/$2/$1\n");
 		file.WriteString(L"\\b(\\w+)\\s+\\1\\b\t$1\n"); // Remove duplicate words
@@ -1799,13 +1828,14 @@ TEST_P(FilterExpressionTest, ReplaceWithListEncoding)
 	fe.SetDiffContext(&ctxt);
 	fe.optimize = GetParam().optimize;
 
-	const String tempDir = env::GetProgPath();
+	const String tempDir = env::GetTemporaryPath();
 	const String replaceListPath = paths::ConcatPath(tempDir, L"test_replacelist_utf8.txt");
 
 	// Create UTF-8 encoded file with Japanese characters
 	{
 		UniStdioFile file;
 		EXPECT_TRUE(file.OpenCreateUtf8(replaceListPath));
+		file.WriteBom();
 		file.WriteString(L"# 日本語のテスト\n");
 		file.WriteString(L"こんにちは\thello\n");
 		file.WriteString(L"さようなら\tgoodbye\n");

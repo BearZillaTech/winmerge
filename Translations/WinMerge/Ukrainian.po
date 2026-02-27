@@ -1637,6 +1637,9 @@ msgstr ""
 msgid "Normalized &Unicode Name"
 msgstr ""
 
+msgid "&Relative Path"
+msgstr ""
+
 msgid "&Date"
 msgstr ""
 
@@ -1647,6 +1650,27 @@ msgid "Insert &replace() Function"
 msgstr ""
 
 msgid "Insert rege&xReplace() Function"
+msgstr ""
+
+msgid "Replace &Lists"
+msgstr ""
+
+msgid "&Create String Replace List and Insert..."
+msgstr ""
+
+msgid "Create &Regex Replace List and Insert..."
+msgstr ""
+
+msgid "&String Replace Lists"
+msgstr ""
+
+msgid "Re&gex Replace Lists"
+msgstr ""
+
+msgid "Open String Replace Lists Folder..."
+msgstr ""
+
+msgid "Open Regex Replace Lists Folder..."
 msgstr ""
 
 msgid "Text &Normalization"
@@ -1680,6 +1704,9 @@ msgid "&Hiragana"
 msgstr ""
 
 msgid "&Katakana"
+msgstr ""
+
+msgid "Normalize &Unicode"
 msgstr ""
 
 msgid "About WinMerge"
@@ -3014,9 +3041,6 @@ msgstr "В центр:"
 msgid "Version %1"
 msgstr "Версія %1"
 
-msgid "X64"
-msgstr "X64"
-
 #, c-format
 msgid "Options (%1)"
 msgstr "Налаштування (%1)"
@@ -3045,6 +3069,9 @@ msgstr "Файли проєктів WinMerge (*.WinMerge)|*.WinMerge||"
 
 msgid "Options files (*.ini)|*.ini|All Files (*.*)|*.*||"
 msgstr "Файли конфігурації (*.ini)|*.ini|Всі файли (*.*)|*.*||"
+
+msgid "Tab-Separated Values (*.tsv;*.txt)|*.tsv;*.txt|All Files (*.*)|*.*||"
+msgstr ""
 
 msgid "Text Files (*.csv;*.asc;*.rpt;*.txt)|*.csv;*.asc;*.rpt;*.txt|All Files (*.*)|*.*||"
 msgstr "Текстові файли (*.csv;*.asc;*.rpt;*.txt)|*.csv;*.asc;*.rpt;*.txt|Всі файли (*.*)|*.*||"
@@ -5240,6 +5267,12 @@ msgstr ""
 msgid "WinMerge detected a previous crash. Please report this if possible."
 msgstr ""
 
+msgid "# Regex replacement list\r\n# Format: regex<TAB>replacement\r\n# Backreferences like $1, $2 are supported\r\n\r\n(\\d{4})-(\\d{2})-(\\d{2})\t$1_$2_$3\r\n"
+msgstr ""
+
+msgid "# Replacement list\r\n# Format: search<TAB>replacement\r\n# Lines starting with # are ignored\r\n\r\nfrom1\tto1\r\nfrom2\tto2\r\n"
+msgstr ""
+
 msgid "Prettification"
 msgstr "Форматування"
 
@@ -5721,6 +5754,9 @@ msgstr ""
 
 msgid "Replace line breaks in formulas with spaces"
 msgstr "Замінити переноси рядків у формулах пробілами"
+
+msgid "Include sheet order number in filename"
+msgstr ""
 
 msgid "Compare VBA macros"
 msgstr "Порівняти макроси VBA"

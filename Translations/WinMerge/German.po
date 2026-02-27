@@ -14,7 +14,7 @@ msgstr ""
 "Project-Id-Version: WinMerge\n"
 "Report-Msgid-Bugs-To: https://github.com/WinMerge/winmerge/issues/\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2026-02-11 21:12+0100\n"
+"PO-Revision-Date: 2026-02-26 19:26+0100\n"
 "Last-Translator: René Nicolaus <translation at havoc.de>\n"
 "Language-Team: German <winmerge-translate@lists.sourceforge.net>\n"
 "Language: de\n"
@@ -1872,6 +1872,9 @@ msgstr "&Basisname (ohne Erweiterung)"
 msgid "Normalized &Unicode Name"
 msgstr "Normalisierter &Unicode-Name"
 
+msgid "&Relative Path"
+msgstr "&Relativer Pfad"
+
 msgid "&Date"
 msgstr "&Datum"
 
@@ -1883,6 +1886,27 @@ msgstr "&replace() Funktion hinzufügen"
 
 msgid "Insert rege&xReplace() Function"
 msgstr "rege&xReplace() Funktion hinzufügen"
+
+msgid "Replace &Lists"
+msgstr "Ersetzungs&listen"
+
+msgid "&Create String Replace List and Insert..."
+msgstr "Zeichenketten-Ersetzungsliste &erstellen und einfügen..."
+
+msgid "Create &Regex Replace List and Insert..."
+msgstr "&Regex-Ersetzungsliste erstellen und einfügen..."
+
+msgid "&String Replace Lists"
+msgstr "Zeichenketten-Er&setzungslisten"
+
+msgid "Re&gex Replace Lists"
+msgstr "Re&gex-Ersetzungslisten"
+
+msgid "Open String Replace Lists Folder..."
+msgstr "Ordner für Zeichenketten-Ersetzungslisten öffnen..."
+
+msgid "Open Regex Replace Lists Folder..."
+msgstr "Ordner für Regex-Ersetzungslisten öffnen..."
 
 msgid "Text &Normalization"
 msgstr "Text&normalisierung"
@@ -1916,6 +1940,9 @@ msgstr "&Hiragana"
 
 msgid "&Katakana"
 msgstr "&Katakana"
+
+msgid "Normalize &Unicode"
+msgstr "&Unicode normalisieren"
 
 #, c-format
 msgid "About WinMerge"
@@ -3527,11 +3554,7 @@ msgstr "In die Mitte:"
 
 #, c-format
 msgid "Version %1"
-msgstr "Version %1 - Deutsch"
-
-#, c-format
-msgid "X64"
-msgstr "x64"
+msgstr "Version %1"
 
 #, c-format
 msgid "Options (%1)"
@@ -3567,6 +3590,9 @@ msgstr "WinMerge-Projektdatei (*.WinMerge)|*.WinMerge||"
 #, c-format
 msgid "Options files (*.ini)|*.ini|All Files (*.*)|*.*||"
 msgstr "Einstellungsdateien (*.ini)|*.ini|Alle Dateien (*.*)|*.*||"
+
+msgid "Tab-Separated Values (*.tsv;*.txt)|*.tsv;*.txt|All Files (*.*)|*.*||"
+msgstr "Tabulator-getrennte Werte (*.tsv;*.txt)|*.tsv;*.txt|Alle Dateien (*.*)|*.*||"
 
 #, c-format
 msgid "Text Files (*.csv;*.asc;*.rpt;*.txt)|*.csv;*.asc;*.rpt;*.txt|All Files (*.*)|*.*||"
@@ -5976,6 +6002,34 @@ msgstr "z. B. %1"
 msgid "WinMerge detected a previous crash. Please report this if possible."
 msgstr "WinMerge hat einen vorherigen Absturz festgestellt. Bitte melden Sie ihn, wenn möglich."
 
+msgid ""
+"# Regex replacement list\r\n"
+"# Format: regex<TAB>replacement\r\n"
+"# Backreferences like $1, $2 are supported\r\n"
+"\r\n"
+"(\\d{4})-(\\d{2})-(\\d{2})\t$1_$2_$3\r\n"
+msgstr ""
+"# Regex-Ersetzungsliste\r\n"
+"# Format: Regex<TAB>Ersetzung\r\n"
+"# Rückverweise wie $1, $2 werden unterstützt\r\n"
+"\r\n"
+"(\\d{4})-(\\d{2})-(\\d{2})\t$1_$2_$3\r\n"
+
+msgid ""
+"# Replacement list\r\n"
+"# Format: search<TAB>replacement\r\n"
+"# Lines starting with # are ignored\r\n"
+"\r\n"
+"from1\tto1\r\n"
+"from2\tto2\r\n"
+msgstr ""
+"# Ersetzungsliste\r\n"
+"# Format: Suche<TAB>Ersetzung\r\n"
+"# Zeilen mit # am Anfang werden ignoriert\r\n"
+"\r\n"
+"von1\tzu1\r\n"
+"von2\tzu2\r\n"
+
 msgid "Prettification"
 msgstr "Verschönerung"
 
@@ -6465,6 +6519,9 @@ msgstr ""
 
 msgid "Replace line breaks in formulas with spaces"
 msgstr "Zeilenumbrüche in Formeln durch Leerzeichen ersetzen"
+
+msgid "Include sheet order number in filename"
+msgstr "Blattnummer in Dateinamen einfügen"
 
 msgid "Compare VBA macros"
 msgstr "VBA-Makros vergleichen"

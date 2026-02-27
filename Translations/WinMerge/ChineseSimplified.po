@@ -23,7 +23,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "X-Poedit-SourceCharset: UTF-8\n"
 "X-Poedit-Basepath: ../../Src\n"
-"X-Generator: Poedit 3.5\n"
+"X-Generator: Poedit 3.8\n"
 "X-Poedit-SearchPath-0: .\n"
 
 #. LANGUAGE, SUBLANGUAGE
@@ -1641,6 +1641,9 @@ msgstr "基础名称（不含扩展名）(&B)"
 msgid "Normalized &Unicode Name"
 msgstr "规范化 Unicode 名称(&U)"
 
+msgid "&Relative Path"
+msgstr "相对路径(&R)"
+
 msgid "&Date"
 msgstr "日期(&D)"
 
@@ -1652,6 +1655,27 @@ msgstr "插入 replace() 函数(&R)"
 
 msgid "Insert rege&xReplace() Function"
 msgstr "插入 regexReplace() 函数(&X)"
+
+msgid "Replace &Lists"
+msgstr "替换列表(&L)"
+
+msgid "&Create String Replace List and Insert..."
+msgstr "创建字符串替换列表并插入(&C)..."
+
+msgid "Create &Regex Replace List and Insert..."
+msgstr "创建正则式替换列表并插入(&R)..."
+
+msgid "&String Replace Lists"
+msgstr "字符串替换列表(&S)"
+
+msgid "Re&gex Replace Lists"
+msgstr "正则式替换列表(&G)"
+
+msgid "Open String Replace Lists Folder..."
+msgstr "打开字符串替换列表文件夹..."
+
+msgid "Open Regex Replace Lists Folder..."
+msgstr "打开正则式替换列表文件夹..."
 
 msgid "Text &Normalization"
 msgstr "文本规范化(&N)"
@@ -1685,6 +1709,9 @@ msgstr "平假名(&H)"
 
 msgid "&Katakana"
 msgstr "片假名(&K)"
+
+msgid "Normalize &Unicode"
+msgstr "规范化 Unicode(&U)"
 
 msgid "About WinMerge"
 msgstr "关于 WinMerge"
@@ -3014,9 +3041,6 @@ msgstr "到中间："
 msgid "Version %1"
 msgstr "版本 %1"
 
-msgid "X64"
-msgstr "64位"
-
 #, c-format
 msgid "Options (%1)"
 msgstr "选项 (%1)"
@@ -3045,6 +3069,9 @@ msgstr "WinMerge 工程文件 (*.WinMerge)|*.WinMerge||"
 
 msgid "Options files (*.ini)|*.ini|All Files (*.*)|*.*||"
 msgstr "配置文件 (*.ini)|*.ini|所有文件 (*.*)|*.*||"
+
+msgid "Tab-Separated Values (*.tsv;*.txt)|*.tsv;*.txt|All Files (*.*)|*.*||"
+msgstr "制表符分隔值 (*.tsv;*.txt)|*.tsv;*.txt|All Files (*.*)|*.*||"
 
 msgid "Text Files (*.csv;*.asc;*.rpt;*.txt)|*.csv;*.asc;*.rpt;*.txt|All Files (*.*)|*.*||"
 msgstr "文本文件 (*.csv;*.asc;*.rpt;*.txt)|*.csv;*.asc;*.rpt;*.txt|所有文件 (*.*)|*.*||"
@@ -3941,7 +3968,7 @@ msgid " (Left and middle are identical)"
 msgstr " (左侧和中间完全相同)"
 
 msgid " (paths differ)"
-msgstr "（路径不同）"
+msgstr " （路径不同）"
 
 msgid "Text files are different"
 msgstr "文本文件不同"
@@ -3991,7 +4018,7 @@ msgstr "(%1 条目)"
 
 #, c-format
 msgid "%1 (set %2): "
-msgstr "%1 (集合 %2)"
+msgstr "%1 (集合 %2)："
 
 msgid ""
 "Some moved items have been merged.\n"
@@ -5248,6 +5275,34 @@ msgstr "例：%1"
 msgid "WinMerge detected a previous crash. Please report this if possible."
 msgstr "WinMerge 检测到之前发生过崩溃。如有可能，请提交此问题报告。"
 
+msgid ""
+"# Regex replacement list\r\n"
+"# Format: regex<TAB>replacement\r\n"
+"# Backreferences like $1, $2 are supported\r\n"
+"\r\n"
+"(\\d{4})-(\\d{2})-(\\d{2})\t$1_$2_$3\r\n"
+msgstr ""
+"# 正则表达式替换列表\n"
+"# 格式：正则表达式<TAB>替换结果\n"
+"# 支持类似于 $1 和 $2 的反向引用\n"
+"\n"
+"(\\d{4})-(\\d{2})-(\\d{2})\t$1_$2_$3\n"
+
+msgid ""
+"# Replacement list\r\n"
+"# Format: search<TAB>replacement\r\n"
+"# Lines starting with # are ignored\r\n"
+"\r\n"
+"from1\tto1\r\n"
+"from2\tto2\r\n"
+msgstr ""
+"# 替换列表\n"
+"# 格式：检索内容<TAB>替换结果\n"
+"# 以 # 开始的行将被忽略\n"
+"\n"
+"from1\tto1\n"
+"from2\tto2\n"
+
 msgid "Prettification"
 msgstr "格式美化"
 
@@ -5737,6 +5792,9 @@ msgstr ""
 
 msgid "Replace line breaks in formulas with spaces"
 msgstr "将公式中的换行符替换为空格"
+
+msgid "Include sheet order number in filename"
+msgstr "在文件名中包含表的顺序编号"
 
 msgid "Compare VBA macros"
 msgstr "比较 VBA 宏"

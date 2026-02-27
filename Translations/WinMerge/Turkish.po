@@ -12,7 +12,7 @@ msgstr ""
 "Project-Id-Version: WinMerge\n"
 "Report-Msgid-Bugs-To: https://github.com/WinMerge/winmerge/issues/\n"
 "POT-Creation-Date: 2025-08-24 14:39+0000\n"
-"PO-Revision-Date: 2026-02-15 16:23+0300\n"
+"PO-Revision-Date: 2026-02-25 17:20+0300\n"
 "Last-Translator: Ahmet Murat Özhan <ozhanmurat@gmail.com>\n"
 "Language-Team: Turkish <winmerge-translate@lists.sourceforge.net>\n"
 "Language: tr\n"
@@ -1638,6 +1638,9 @@ msgstr "T&emel ad (uzantısız)"
 msgid "Normalized &Unicode Name"
 msgstr "Normalleştirilmiş &Unicode Adı"
 
+msgid "&Relative Path"
+msgstr "&Göreli Yol"
+
 msgid "&Date"
 msgstr "Tari&h"
 
@@ -1649,6 +1652,27 @@ msgstr "&replace() İşlevini Ekle"
 
 msgid "Insert rege&xReplace() Function"
 msgstr "rege&xReplace() İşlevini Ekle"
+
+msgid "Replace &Lists"
+msgstr "&Listeleri Değiştir"
+
+msgid "&Create String Replace List and Insert..."
+msgstr "Dize Değiştirme Listesi &Oluştur ve Ekle…"
+
+msgid "Create &Regex Replace List and Insert..."
+msgstr "&Regex Değiştirme Listesi Oluştur ve Ekle…"
+
+msgid "&String Replace Lists"
+msgstr "&Dize Değiştirme Listeleri"
+
+msgid "Re&gex Replace Lists"
+msgstr "Re&gex Değiştirme Listeleri"
+
+msgid "Open String Replace Lists Folder..."
+msgstr "Dize Değiştirme Listeleri Klasörünü Aç…"
+
+msgid "Open Regex Replace Lists Folder..."
+msgstr "Regex Değiştirme Listeleri Klasörünü Aç…"
 
 msgid "Text &Normalization"
 msgstr "Metin &Normalleştirme"
@@ -1682,6 +1706,9 @@ msgstr "&Hiragana"
 
 msgid "&Katakana"
 msgstr "&Katakana"
+
+msgid "Normalize &Unicode"
+msgstr "&Unicode’u Normalleştir"
 
 msgid "About WinMerge"
 msgstr "WinMerge hakkında"
@@ -3013,9 +3040,6 @@ msgstr "Ortaya:"
 msgid "Version %1"
 msgstr "Sürüm %1"
 
-msgid "X64"
-msgstr "X64"
-
 #, c-format
 msgid "Options (%1)"
 msgstr "Ayarlar (%1)"
@@ -3044,6 +3068,9 @@ msgstr "WinMerge proje dosyaları (*.WinMerge)|*.WinMerge||"
 
 msgid "Options files (*.ini)|*.ini|All Files (*.*)|*.*||"
 msgstr "Ayar dosyaları (*.ini)|*.ini|Tüm dosyalar (*.*)|*.*||"
+
+msgid "Tab-Separated Values (*.tsv;*.txt)|*.tsv;*.txt|All Files (*.*)|*.*||"
+msgstr "Sekmeyle Ayrılmış Değerler (*.tsv;*.txt)|*.tsv;*.txt|Tüm Dosyalar (*.*)|*.*||"
 
 msgid "Text Files (*.csv;*.asc;*.rpt;*.txt)|*.csv;*.asc;*.rpt;*.txt|All Files (*.*)|*.*||"
 msgstr "Metin dosyaları (*.csv;*.asc;*.rpt;*.txt)|*.csv;*.asc;*.rpt;*.txt|Tüm dosyalar (*.*)|*.*||"
@@ -5251,6 +5278,34 @@ msgstr "örn. %1"
 msgid "WinMerge detected a previous crash. Please report this if possible."
 msgstr "WinMerge, önceki bir çökme tespit etti. Mümkünse lütfen bunu bildirin."
 
+msgid ""
+"# Regex replacement list\r\n"
+"# Format: regex<TAB>replacement\r\n"
+"# Backreferences like $1, $2 are supported\r\n"
+"\r\n"
+"(\\d{4})-(\\d{2})-(\\d{2})\t$1_$2_$3\r\n"
+msgstr ""
+"# Regex değiştirme listesi\r\n"
+"# Biçim: regex<TAB>yerine geçecek metin\r\n"
+"# $1, $2 gibi geri başvurular desteklenir\r\n"
+"\r\n"
+"(\\d{4})-(\\d{2})-(\\d{2})\t$1_$2_$3\r\n"
+
+msgid ""
+"# Replacement list\r\n"
+"# Format: search<TAB>replacement\r\n"
+"# Lines starting with # are ignored\r\n"
+"\r\n"
+"from1\tto1\r\n"
+"from2\tto2\r\n"
+msgstr ""
+"# Değiştirme listesi\r\n"
+"# Biçim: aranan<TAB>yerine geçecek metin\r\n"
+"# # ile başlayan satırlar yok sayılır\r\n"
+"\r\n"
+"from1\tto1\r\n"
+"from2\tto2\r\n"
+
 msgid "Prettification"
 msgstr "Sadeleştirme"
 
@@ -5740,6 +5795,9 @@ msgstr ""
 
 msgid "Replace line breaks in formulas with spaces"
 msgstr "Formüllerdeki satır sonlarını boşluklarla değiştirin"
+
+msgid "Include sheet order number in filename"
+msgstr "Sayfa sıra numarasını dosya adına ekle"
 
 msgid "Compare VBA macros"
 msgstr "VBA makroları karşılaştırılsın"
