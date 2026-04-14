@@ -50,6 +50,7 @@
 #include "DirTravel.h"
 #include "MouseHook.h"
 #include "RenameMoveDetection.h"
+#include "FileFilterHelper.h"
 #include <numeric>
 #include <functional>
 
@@ -185,6 +186,8 @@ BEGIN_MESSAGE_MAP(CDirView, CListView)
 	ON_UPDATE_COMMAND_UI(ID_OPTIONS_SHOWMISSINGRIGHTONLY, OnUpdateOptionsShowMissingRightOnly)
 	ON_COMMAND(ID_VIEW_SHOWHIDDENITEMS, OnViewShowHiddenItems)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_SHOWHIDDENITEMS, OnUpdateViewShowHiddenItems)
+	ON_COMMAND(ID_VIEW_SHOW_EMPTY_FOLDERS, OnViewShowEmptyFolders)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_SHOW_EMPTY_FOLDERS, OnUpdateViewShowEmptyFolders)
 	ON_COMMAND(ID_VIEW_TREEMODE, OnViewTreeMode)
 	ON_COMMAND(ID_VIEW_EXPAND_ALLSUBDIRS, OnViewExpandAllSubdirs)
 	ON_COMMAND(ID_VIEW_EXPAND_DIFFERENT_SUBDIRS, OnViewExpandDifferentSubdirs)
@@ -224,6 +227,7 @@ BEGIN_MESSAGE_MAP(CDirView, CListView)
 	ON_UPDATE_COMMAND_UI_RANGE(ID_L2R, ID_R2L, OnUpdateDirCopy)
 	ON_COMMAND(ID_MERGE_DELETE, OnDelete)
 	ON_UPDATE_COMMAND_UI(ID_MERGE_DELETE, OnUpdateDelete)
+	ON_COMMAND_RANGE(ID_FILTERMENU_FIRST, ID_FILTERMENU_LAST, OnFilterMenuCommand)
 	// [Tools] menu
 	ON_COMMAND(ID_TOOLS_CUSTOMIZECOLUMNS, OnCustomizeColumns)
 	ON_COMMAND(ID_TOOLS_GENERATEREPORT, OnToolsGenerateReport)
@@ -563,17 +567,60 @@ void CDirView::ReloadColumns()
 }
 
 /**
+ * @brief Check whether the specified parent has any showable descendant.
+ * @param [in] parent Parent item.
+ * @return true if the parent has at least one showable descendant; otherwise false.
+ */
+bool CDirView::HasShowableDescendant(DIFFITEM* parent)
+{
+	auto it = m_hasShowableDescendantCache.find(parent);
+	if (it != m_hasShowableDescendantCache.end())
+		return it->second;
+
+	const CDiffContext& ctxt = GetDiffContext();
+	DIFFITEM* diffpos = ctxt.GetFirstChildDiffPosition(parent);
+
+	while (diffpos != nullptr)
+	{
+		DIFFITEM* curdiffpos = diffpos;
+		const DIFFITEM& di = ctxt.GetNextSiblingDiffPosition(diffpos);
+
+		if (IsShowable(ctxt, di, m_dirfilter))
+		{
+			if (!di.diffcode.isDirectory())
+			{
+				m_hasShowableDescendantCache[parent] = true;
+				return true;
+			}
+
+			if (di.HasChildren() && HasShowableDescendant(curdiffpos))
+			{
+				m_hasShowableDescendantCache[parent] = true;
+				return true;
+			}
+		}
+	}
+
+	m_hasShowableDescendantCache[parent] = false;
+	return false;
+}
+
+/**
  * @brief Redisplay items in subfolder
- * @param [in] diffpos First item position in subfolder.
+ * @param [in] parent Parent item (nullptr for root level).
  * @param [in] level Indent level
  * @param [in,out] index Index of the item to be inserted.
  * @param [in,out] alldiffs Number of different items
  * @return returns -1 if the comparison of some items was interrupted or an error occurred
  */
-int CDirView::RedisplayChildren(DIFFITEM *diffpos, int level, UINT &index, int &alldiffs)
+int CDirView::RedisplayChildren(DIFFITEM *parent, int level, UINT &index, int &alldiffs)
 {
 	int result = 0;
 	const CDiffContext &ctxt = GetDiffContext();
+
+	// Get first child of parent (or first root item if parent is nullptr)
+	DIFFITEM *diffpos = parent ? ctxt.GetFirstChildDiffPosition(parent) : ctxt.GetFirstDiffPosition();
+
 	while (diffpos != nullptr)
 	{
 		DIFFITEM *curdiffpos = diffpos;
@@ -585,31 +632,44 @@ int CDirView::RedisplayChildren(DIFFITEM *diffpos, int level, UINT &index, int &
 			result = -1;
 
 		bool bShowable = IsShowable(ctxt, di, m_dirfilter);
+
+		if (m_bTreeMode && !m_dirfilter.show_empty_folders && di.diffcode.isDirectory() && !HasShowableDescendant(curdiffpos))
+			bShowable = false;
+
 		if (bShowable)
 		{
 			if (m_bTreeMode)
 			{
+				// In tree mode, add the item first
 				AddNewItem(index, curdiffpos, I_IMAGECALLBACK, level);
 				index++;
+
+				// Process children if directory has children
 				if (di.HasChildren())
 				{
 					if (di.customFlags & ViewCustomFlags::EXPANDED)
 					{
-						if (RedisplayChildren(ctxt.GetFirstChildDiffPosition(curdiffpos), level + 1, index, alldiffs) < 0)
+						// Expanded: recursively display children
+						if (RedisplayChildren(curdiffpos, level + 1, index, alldiffs) < 0)
 							result = -1;
 					}
+					// Note: For collapsed directories, we don't process children
+					// Empty folder filtering is handled when expanding
 				}
 			}
 			else
 			{
+				// Flat mode
 				if (!ctxt.m_bRecursive || !di.diffcode.isDirectory() || !di.diffcode.existAll())
 				{
 					AddNewItem(index, curdiffpos, I_IMAGECALLBACK, 0);
 					index++;
 				}
+
 				if (di.HasChildren())
 				{
-					if (RedisplayChildren(ctxt.GetFirstChildDiffPosition(curdiffpos), level + 1, index, alldiffs) < 0)
+					// Recursively process children
+					if (RedisplayChildren(curdiffpos, level + 1, index, alldiffs) < 0)
 						result = -1;
 				}
 			}
@@ -649,8 +709,8 @@ void CDirView::Redisplay()
 
 	m_dirfilter.displayFilterHelper.SetDiffContext(&ctxt);
 	int alldiffs = 0;
-	DIFFITEM *diffpos = ctxt.GetFirstDiffPosition();
-	const int result = RedisplayChildren(diffpos, 0, cnt, alldiffs);
+	m_hasShowableDescendantCache.clear();
+	const int result = RedisplayChildren(nullptr, 0, cnt, alldiffs);
 	const unsigned int threadState = pDoc->m_diffThread.GetThreadState();
 	GetParentFrame()->SetLastCompareResult((threadState != CDiffThread::THREAD_COMPLETED || result < 0) ? -1 : alldiffs);
 	SortColumnsAppropriately();
@@ -685,10 +745,9 @@ void CDirView::OnContextMenu(CWnd*, CPoint point)
 	else
 	{
 		// Check if user right-clicked on header
-		// convert screen coordinates to client coordinates of listview
+		// convert screen coordinates to client coordinates of header control
 		CPoint insidePt = point;
-		GetListCtrl().ScreenToClient(&insidePt);
-		// TODO: correct for hscroll ?
+		GetListCtrl().GetHeaderCtrl()->ScreenToClient(&insidePt);
 		// Ask header control if click was on one of its header items
 		HDHITTESTINFO hhti = { 0 };
 		hhti.pt = insidePt;
@@ -828,7 +887,7 @@ void CDirView::ListContextMenu(CPoint point, int /*i*/)
 /**
  * @brief User right-clicked on specified logical column
  */
-void CDirView::HeaderContextMenu(CPoint point, int /*i*/)
+void CDirView::HeaderContextMenu(CPoint point, int i)
 {
 	BCMenu menu;
 	VERIFY(menu.LoadMenu(IDR_POPUP_DIRVIEW));
@@ -838,10 +897,31 @@ void CDirView::HeaderContextMenu(CPoint point, int /*i*/)
 	BCMenu* pPopup = static_cast<BCMenu *>(menu.GetSubMenu(1));
 	ASSERT(pPopup != nullptr);
 
+	const DirColInfo * col = m_pColItems->GetDirColInfo(i);
+	ASSERT(col != nullptr);
+	m_pFilterMenu = CFileFilterHelperMenu::AppendColumnFilterMenu(pPopup, col->regName, GetDocument()->m_nDirs >= 3);
+
 	// invoke context menu
 	// this will invoke all the OnUpdate methods to enable/disable the individual items
 	pPopup->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y,
 			AfxGetMainWnd());
+}
+
+void CDirView::OnFilterMenuCommand(UINT nID)
+{
+	if (!m_pFilterMenu)
+		return;
+	String masks = m_dirfilter.displayFilterHelper.GetMaskOrExpression();
+	CDirFrame* pFrame = GetParentFrame();
+	auto* pFilterBar = pFrame->GetFilterBar();
+	if (pFilterBar)
+		pFilterBar->GetDlgItemText(IDC_FILTERFILE_MASK, masks);
+	auto newMasks = m_pFilterMenu->HandleMenuCommand(masks, nID, this);
+	if (!newMasks.has_value())
+		return;
+	m_dirfilter.displayFilterHelper.SetMaskOrExpression(*newMasks);
+	OnViewDisplayFilterBar();
+	OnViewDisplayFilterBarApply();
 }
 
 /**
@@ -1374,10 +1454,10 @@ void CDirView::ExpandSubdir(int sel, bool bRecursive)
 	if (bRecursive)
 		ExpandSubdirs(ctxt, dip);
 
-	DIFFITEM *diffpos = ctxt.GetFirstChildDiffPosition(GetItemKey(sel));
 	UINT indext = sel + 1;
-	int alldiffs;
-	RedisplayChildren(diffpos, dip.GetDepth() + 1, indext, alldiffs);
+	int alldiffs = 0;
+	m_hasShowableDescendantCache.clear();
+	RedisplayChildren(GetItemKey(sel), dip.GetDepth() + 1, indext, alldiffs);
 
 	SortColumnsAppropriately();
 
@@ -3403,7 +3483,7 @@ void CDirView::OnPluginSettings(UINT nID)
 		String filteredFilenames = ctxt.GetFilteredFilenames(GetDiffItem(sel));
 		ctxt.FetchPluginInfos(filteredFilenames, &infoUnpacker, &infoPrediffer);
 		GetDiffContext().FetchPluginInfos(filteredFilenames, &infoUnpacker, &infoPrediffer);
-		CSelectPluginDlg dlg(infoUnpacker->GetPluginPipeline(), filteredFilenames,
+		CSelectPluginDlg dlg(unpacker ? infoUnpacker->GetPluginPipeline() : infoPrediffer->GetPluginPipeline(), filteredFilenames,
 			unpacker ? CSelectPluginDlg::PluginType::Unpacker : CSelectPluginDlg::PluginType::Prediffer, false, this);
 		if (dlg.DoModal() != IDOK)
 			return;
@@ -3962,6 +4042,25 @@ void CDirView::OnUpdateViewTreeMode(CCmdUI* pCmdUI)
 		pCmdUI->SetCheck(FALSE);
 		pCmdUI->Enable(FALSE);
 	}
+}
+
+/**
+ * @brief Toggle Show Empty Folders
+ */
+void CDirView::OnViewShowEmptyFolders()
+{
+	m_dirfilter.show_empty_folders = !m_dirfilter.show_empty_folders;
+	GetOptionsMgr()->SaveOption(OPT_SHOW_EMPTY_FOLDERS, m_dirfilter.show_empty_folders);
+	Redisplay();
+}
+
+/**
+ * @brief Update 'Show Empty Folders' menuitem.
+ */
+void CDirView::OnUpdateViewShowEmptyFolders(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_dirfilter.show_empty_folders);
+	pCmdUI->Enable(GetDocument()->GetDiffContext().m_bRecursive && m_bTreeMode);
 }
 
 /**

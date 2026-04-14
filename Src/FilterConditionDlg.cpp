@@ -1,12 +1,13 @@
 /** 
  * @file  FilterConditionDlg.cpp
  *
- * @brief Implementation of the dialog used to select table properties
+ * @brief Implementation of the filter condition dialog, which allows users to create/edit filter conditions for file/folder properties.
  */
 
 #include "stdafx.h"
 #include "FilterConditionDlg.h"
 #include "PropertySystem.h"
+#include "ExConverter.h"
 #include "resource.h"
 
 #ifdef _DEBUG
@@ -21,6 +22,7 @@ CFilterConditionDlg::CFilterConditionDlg(CWnd* pParent /*= nullptr*/)
 : CTrDialog(CFilterConditionDlg::IDD, pParent)
 , m_bDiff(false)
 , m_nSide(0)
+, m_bCaseSensitive(false)
 {
 }
 
@@ -35,6 +37,7 @@ CFilterConditionDlg::CFilterConditionDlg(bool diff, int side, const String& fiel
 , m_tmValue2(CTime::GetCurrentTime())
 , m_sLHS(transform)
 , m_bRecursive(recursive)
+, m_bCaseSensitive(false)
 {
 	//{{AFX_DATA_INIT(CFilterConditionDlg)
 		// NOTE: the ClassWizard will add member initialization here
@@ -51,7 +54,10 @@ void CFilterConditionDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_CONDITION_VALUE2, m_ctlValue2);
 	DDX_DateTimeCtrl(pDX, IDC_CONDITION_VALUEDTP1, m_tmValue1);
 	DDX_DateTimeCtrl(pDX, IDC_CONDITION_VALUEDTP2, m_tmValue2);
+	DDX_Check(pDX, IDC_CONDITION_MATCHCASE, m_bCaseSensitive);
 	//}}AFX_DATA_MAP
+	if (pDX->m_bSaveAndValidate)
+		UpdateCodepageValue();
 }
 
 BEGIN_MESSAGE_MAP(CFilterConditionDlg, CTrDialog)
@@ -63,8 +69,18 @@ BEGIN_MESSAGE_MAP(CFilterConditionDlg, CTrDialog)
 	ON_CBN_SELCHANGE(IDC_CONDITION_VALUE2, OnCbnSelchangeValue)
 	ON_NOTIFY(DTN_DATETIMECHANGE, IDC_CONDITION_VALUEDTP1, OnDateTimeChange)
 	ON_NOTIFY(DTN_DATETIMECHANGE, IDC_CONDITION_VALUEDTP2, OnDateTimeChange)
+	ON_BN_CLICKED(IDC_CONDITION_MATCHCASE, OnCbnSelchangeOperator)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
+
+void CFilterConditionDlg::UpdateCodepageValue()
+{
+	if (m_sField == _T("Codepage"))
+	{
+		m_sValue1 = strutils::to_str(tc::ttoi(m_sValue1.c_str()));
+		m_sValue2 = strutils::to_str(tc::ttoi(m_sValue2.c_str()));
+	}
+}
 
 String CFilterConditionDlg::GetLHS() const
 {
@@ -102,6 +118,16 @@ String CFilterConditionDlg::GetLHS() const
 	return lhs;
 }
 
+bool CFilterConditionDlg::IsStringField(bool includeContent /* = true */) const
+{
+	if (includeContent && m_sField == _T("Content"))
+		return true;
+	return m_sField == _T("Name") || m_sField == _T("Folder") || 
+		   m_sField == _T("Extension") || m_sField == _T("Unpacker") || 
+		   m_sField == _T("Prediffer") ||
+		   m_vt == VT_LPWSTR || m_vt == (VT_VECTOR | VT_LPWSTR);
+}
+
 String CFilterConditionDlg::GetExpression()
 {
 	auto expressionptr = (intptr_t)GetDlgItemDataCurSel(IDC_CONDITION_OPERATOR);
@@ -112,8 +138,9 @@ String CFilterConditionDlg::GetExpression()
 	String result;
 	if (m_sField == _T("Size") || m_sField == _T("TotalSize") ||
 	    m_sField == _T("Files") || m_sField == _T("Items") ||
-	    m_sField == _T("Date") || m_sLHS == _T("lineCount(%1)") ||
-	    m_vt == VT_I4 || m_vt == VT_UI4 || m_vt == VT_I4 || m_vt == VT_UI8 || m_vt == VT_I8)
+	    m_sField == _T("Differences") || m_sField == _T("IgnoredDiffs") ||
+	    m_sField == _T("Codepage") || m_sLHS == _T("lineCount(%1)") ||
+	    m_vt == VT_I4 || m_vt == VT_UI4 || m_vt == VT_UI8 || m_vt == VT_I8)
 	{
 		result = strutils::format_string3(expression, lhs, m_sValue1, m_sValue2);
 	}
@@ -121,7 +148,7 @@ String CFilterConditionDlg::GetExpression()
 	{
 		String value1;
 		String value2;
-		if (m_sField == _T("DateStr"))
+		if (m_sField == _T("DateStr") || m_sLHS == _T("toDateStr(%1)"))
 		{
 			value1 = m_tmValue1.Format(_T("%Y-%m-%d"));
 			value2 = m_tmValue2.Format(_T("%Y-%m-%d"));
@@ -137,7 +164,44 @@ String CFilterConditionDlg::GetExpression()
 		value2 = _T("\"") + value2 + _T("\"");
 		result = strutils::format_string3(expression, lhs, value1, value2);
 	}
+
+	// Add @cs directive prefix if Match Case is checked
+	if (m_bCaseSensitive)
+		result = _T("@cs ") + result;
+
 	return result;
+}
+
+void AddCodepagesToComboBox(CComboBox& comboBox)
+{
+	IExconverter* pexconv = Exconverter::getInstance();
+	if (pexconv != nullptr)
+	{
+		std::vector<CodePageInfo> cpi = pexconv->enumCodePages();
+		size_t Index = 0;
+		for (size_t i = 0; i < cpi.size(); i++)
+		{
+			if (cpi[i].codepage == 1200 /* UNICODE */)
+				continue;
+			String desc = strutils::format(_T("%d - %s"), cpi[i].codepage, cpi[i].desc);
+			Index = comboBox.AddString(desc.c_str());
+			comboBox.SetItemData(static_cast<int>(Index), cpi[i].codepage);
+		}
+
+		static int ManualAddTypeList[] = { 437, 850, 858, 860, 863, 861, 1200, 1201, 65000 };
+		for (int i = 0; i < sizeof(ManualAddTypeList) / sizeof(int); i++)
+		{
+			String desc;
+			pexconv->getCodepageDescription(ManualAddTypeList[i], desc);
+			desc = strutils::format(_T("%d - %s"), ManualAddTypeList[i], desc);
+
+			if (comboBox.FindStringExact(0, desc.c_str()) == CB_ERR)
+			{
+				Index = comboBox.AddString(desc.c_str());
+				comboBox.SetItemData(static_cast<int>(Index), ManualAddTypeList[i]);
+			}
+		}
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -148,7 +212,7 @@ String CFilterConditionDlg::GetExpression()
  */
 BOOL CFilterConditionDlg::OnInitDialog()
 {
-	CTrDialog::OnInitDialog();
+	__super::OnInitDialog();
 
 	SetDlgItemText(IDC_CONDITION_LHS, GetLHS());
 
@@ -161,7 +225,8 @@ BOOL CFilterConditionDlg::OnInitDialog()
 	// Initialize the operator combo box
 	if (m_sField == _T("Size") || m_sField == _T("TotalSize") ||
 	    m_sField == _T("Files") || m_sField == _T("Items") ||
-	    m_sField == _T("Date") || m_sField == _T("DateStr") ||
+	    m_sField == _T("Codepage") || m_sField == _T("Differences") || m_sField == _T("IgnoredDiffs") ||
+		m_sField == _T("DateStr") || m_sLHS == _T("toDateStr(%1)") ||
 	    m_sLHS == _T("lineCount(%1)") || m_vt == VT_I4 || m_vt == VT_UI4 || m_vt == VT_I8 || m_vt == VT_UI8)
 	{
 		SetDlgItemComboBoxList(IDC_CONDITION_OPERATOR,
@@ -186,12 +251,16 @@ BOOL CFilterConditionDlg::OnInitDialog()
 				{ _("Not Contains (regex)"), L"%1 not recontains %2" },
 			}, m_sOperator);
 	} 
-	else if (m_vt == VT_LPWSTR || m_vt == (VT_VECTOR|VT_LPWSTR))
+	else if (IsStringField(false))
 	{
 		SetDlgItemComboBoxList(IDC_CONDITION_OPERATOR,
 			{
 				{ _("Equals"), L"%1 = %2" },
 				{ _("Does not equal"), L"%1 != %2" },
+				{ _("Match (wildcard)"), L"%1 like %2" },
+				{ _("Not match (wildcard)"), L"%1 not like %2" },
+				{ _("Match (regex)"), L"%1 matches %2" },
+				{ _("Not match (regex)"), L"%1 not matches %2" },
 				{ _("Contains"), L"%1 contains %2" },
 				{ _("Not Contains"), L"%1 not contains %2" },
 				{ _("Contains (regex)"), L"%1 recontains %2" },
@@ -207,12 +276,19 @@ BOOL CFilterConditionDlg::OnInitDialog()
 		m_sValue1 = _T("0B");
 		m_sValue2 = _T("0B");
 	}
-	else if (m_sLHS == _T("lineCount(%1)") || m_sField == _T("Files") || m_sField == _T("Items"))
+	else if (m_sLHS == _T("lineCount(%1)") || m_sField == _T("Files") || m_sField == _T("Items") || m_sField == _T("Differences") || m_sField == _T("IgnoredDiffs"))
 	{
 		SetDlgItemComboBoxList(IDC_CONDITION_VALUE1, { _("0"), _("1"), _("10"), _("100"),_("1000"), _("10000"), _("100000") });
 		SetDlgItemComboBoxList(IDC_CONDITION_VALUE2, { _("0"), _("1"), _("10"), _("100"),_("1000"), _("10000"), _("100000") });
 		m_sValue1 = _T("0");
 		m_sValue2 = _T("0");
+	}
+	else if (m_sField == _T("Codepage"))
+	{
+		AddCodepagesToComboBox(m_ctlValue1);
+		AddCodepagesToComboBox(m_ctlValue2);
+		m_sValue1 = _T("65001");
+		m_sValue2 = _T("65001");
 	}
 	else if (m_sField == _T("Date"))
 	{
@@ -221,7 +297,7 @@ BOOL CFilterConditionDlg::OnInitDialog()
 		m_sValue1 = _T("0second");
 		m_sValue2 = _T("0second");
 	}
-	else if (m_sField == _T("DateStr"))
+	else if (m_sField == _T("DateStr") || m_sLHS == _T("toDateStr(%1)"))
 	{
 		// No initialization required for "DateStr" field
 	}
@@ -236,9 +312,13 @@ BOOL CFilterConditionDlg::OnInitDialog()
 		m_sValue2 = _T("0");
 	}
 
-	OnCbnSelchangeOperator();
+	// Show Match Case checkbox only for string-based fields
+	const bool isStringField = IsStringField();
+	ShowDlgItem(IDC_CONDITION_MATCHCASE, isStringField);
 
 	UpdateData(FALSE);
+
+	OnCbnSelchangeOperator();
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX Property Pages should return FALSE
@@ -246,12 +326,13 @@ BOOL CFilterConditionDlg::OnInitDialog()
 
 void CFilterConditionDlg::OnCbnSelchangeOperator()
 {
+	UpdateData(TRUE);
 	auto expressionptr = (intptr_t)GetDlgItemDataCurSel(IDC_CONDITION_OPERATOR);
 	if (expressionptr == -1)
 		return;
 	String expression = (const wchar_t*)expressionptr;
 	const bool showValue2 = expression.find(_T("%3")) != String::npos;
-	const bool showDatePicker = (m_sField == _T("DateStr"));
+	const bool showDatePicker = (m_sField == _T("DateStr") || m_sLHS == _T("toDateStr(%1)"));
 	ShowDlgItem(IDC_CONDITION_VALUE1, !showDatePicker);
 	ShowDlgItem(IDC_CONDITION_VALUE2, !showDatePicker && showValue2);
 	ShowDlgItem(IDC_CONDITION_VALUEDTP1, showDatePicker);
@@ -288,6 +369,7 @@ void CFilterConditionDlg::OnCbnSelchangeValue()
 		m_ctlValue2.GetLBText(sel2, value);
 		m_sValue2 = value.GetString();
 	}
+	UpdateCodepageValue();
 	SetDlgItemText(IDC_CONDITION_EXPRESSION, GetExpression());
 }
 

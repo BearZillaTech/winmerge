@@ -2,6 +2,7 @@
 #include "FileFilterHelper.h"
 #include "FileFilterHelperMenu.h"
 #include "FilterConditionDlg.h"
+#include "ComparisonResultFilterDlg.h"
 #include "PropertySystem.h"
 #include "PropertySystemMenu.h"
 #include "resource.h"
@@ -295,6 +296,73 @@ std::optional<String> CFileFilterHelperMenu::OnCommand(const String& masks, int 
 		result = masks.empty() ? masks : masks + _T(";");
 		*result += _T("!.vs\\;!.idea\\;!.vscode\\;!.metadata\\;!.settings\\");
 	}
+	else if (command == ID_FILTERMENU_FILENAME)
+	{
+		CFilterConditionDlg dlg(false, m_targetSide, _T("Name"), m_propName, _("%1 contains %2"), _T("%1"));
+		if (dlg.DoModal() == IDOK)
+			result = (masks.empty() ? masks : masks + _T("|")) + _T("fe:") + dlg.m_sExpression;
+	}
+	else if (command == ID_FILTERMENU_EXTENSION)
+	{
+		CFilterConditionDlg dlg(false, m_targetSide, _T("Extension"), m_propName, _("%1 contains %2"), _T("%1"));
+		if (dlg.DoModal() == IDOK)
+			result = (masks.empty() ? masks : masks + _T("|")) + _T("fe:") + dlg.m_sExpression;
+	}
+	else if (command == ID_FILTERMENU_CODEPAGE)
+	{
+		CFilterConditionDlg dlg(false, m_targetSide, _T("Codepage"), m_propName, _("%1 = %2"), _T("%1"));
+		if (dlg.DoModal() == IDOK)
+			result = (masks.empty() ? masks : masks + _T("|")) + _T("fe:") + dlg.m_sExpression;
+	}
+	else if (command == ID_FILTERMENU_UNPACKER)
+	{
+		CFilterConditionDlg dlg(false, 0, _T("Unpacker"), m_propName, _("%1 contains %2"), _T("%1"));
+		if (dlg.DoModal() == IDOK)
+			result = (masks.empty() ? masks : masks + _T("|")) + _T("fe:") + dlg.m_sExpression;
+	}
+	else if (command == ID_FILTERMENU_PREDIFFER)
+	{
+		CFilterConditionDlg dlg(false, 0, _T("Prediffer"), m_propName, _("%1 contains %2"), _T("%1"));
+		if (dlg.DoModal() == IDOK)
+			result = (masks.empty() ? masks : masks + _T("|")) + _T("fe:") + dlg.m_sExpression;
+	}
+	else if (command == ID_FILTERMENU_RELATIVEFOLDER)
+	{
+		CFilterConditionDlg dlg(false, m_targetSide, _T("Folder"), m_propName, _("%1 contains %2"), _T("%1"));
+		if (dlg.DoModal() == IDOK)
+			result = (masks.empty() ? masks : masks + _T("|")) + _T("fe:") + dlg.m_sExpression;
+	}
+	else if (command == ID_FILTERMENU_COMPARISON_RESULT)
+	{
+		CComparisonResultFilterDlg dlg(m_is3Way);
+		if (dlg.DoModal() == IDOK)
+			result = (masks.empty() ? masks : masks + _T("|")) + _T("fe:") + dlg.m_sExpression;
+	}
+	else if (command == ID_FILTERMENU_DIFFERENCES)
+	{
+		CFilterConditionDlg dlg(false, 0, _T("Differences"), _T(""), _("%1 = %2"), _T("Differences"));
+		if (dlg.DoModal() == IDOK)
+			result = (masks.empty() ? masks : masks + _T("|")) + _T("fe:") + dlg.m_sExpression;
+	}
+	else if (command == ID_FILTERMENU_IGNORED_DIFFS)
+	{
+		CFilterConditionDlg dlg(false, 0, _T("IgnoredDiffs"), _T(""), _("%1 = %2"), _T("IgnoredDiffs"));
+		if (dlg.DoModal() == IDOK)
+			result = (masks.empty() ? masks : masks + _T("|")) + _T("fe:") + dlg.m_sExpression;
+	}
+	else if (command == ID_FILTERMENU_ADDITIONAL_PROP_DIALOG)
+	{
+		PropertySystem ps({ m_propName });
+		VARTYPE vt;
+		ps.GetPropertyType(0, vt);
+		if (vt == VT_I4 || vt == VT_UI4 || vt == VT_I8 || vt == VT_UI8 ||
+			vt == VT_R4 || vt == VT_R8 || vt == VT_LPWSTR || vt == (VT_VECTOR|VT_LPWSTR))
+		{
+			CFilterConditionDlg dlg(false, m_targetSide, _T(""), m_propName, _("%1 = %2"), _T("%1"));
+			if (dlg.DoModal() == IDOK)
+				result = (masks.empty() ? masks : masks + _T("|")) + _T("fe:") + dlg.m_sExpression;
+		}
+	}
 	else if (command >= ID_FILTERMENU_SIZE_LT_1KB && command <= ID_FILTERMENU_SIZE_GE_1GB)
 	{
 		static const String SizeConditions[] = {
@@ -329,13 +397,15 @@ std::optional<String> CFileFilterHelperMenu::OnCommand(const String& masks, int 
 			_T("%1 < startOfYear(now())"), _T("%1 >= startOfYear(now())"),
 			_T("%1 < startOfYear(startOfYear(now()) - 1day)"), _T("inRange(%1, startOfYear(startOfYear(now()) - 1day), startOfYear(now()))"), _T("%1 >= startOfYear(startOfYear(now()) - 1day)")
 		};
-		const String identifier = defaultProp(_T("Date"));
+		bool isModifiedDate = m_colName.find(_T("ctime")) == String::npos;
+		const String identifier = defaultProp(m_propName.empty() ? (isModifiedDate ? _T("Date") : _T("CreationTime")) : m_propName);
 		result = masks.empty() ? masks : masks + _T("|");
 		*result += _T("fe:") + strutils::format_string1(DateConditions[command - ID_FILTERMENU_DATE_HOUR_BEFORE_1], identifier);
 	}
 	else if (command == ID_FILTERMENU_DATE_RANGE)
 	{
-		CFilterConditionDlg dlg(false, m_targetSide, _T("DateStr"), m_propName, _("%1 = %2"), _T("%1"));
+		bool isModifiedDate = m_colName.find(_T("ctime")) == String::npos;
+		CFilterConditionDlg dlg(false, m_targetSide, (isModifiedDate ? _T("DateStr") : _T("CreationTime")), m_propName, _("%1 = %2"), isModifiedDate ? _T("%1") : _T("toDateStr(%1)"));
 		if (dlg.DoModal() == IDOK)
 			result = (masks.empty() ? masks : masks + _T("|")) + _T("fe:") + dlg.m_sExpression;
 	}
@@ -349,6 +419,18 @@ std::optional<String> CFileFilterHelperMenu::OnCommand(const String& masks, int 
 		const String identifier = Sides[m_targetSide] + _T("AttrStr");
 		result = masks.empty() ? masks : masks + _T("|");
 		*result += _T("fe:") + strutils::format_string1(AttrConditions[command - ID_FILTERMENU_ATTR_READONLY], identifier);
+	}
+	else if (command == ID_FILTERMENU_BINARY_ONLY)
+	{
+		const String identifier = Sides[m_targetSide] + _T("Binary");
+		result = masks.empty() ? masks : masks + _T("|");
+		*result += _T("fe:") + identifier;
+	}
+	else if (command == ID_FILTERMENU_TEXT_ONLY)
+	{
+		const String identifier = _T("not ") + Sides[m_targetSide] + _T("Binary");
+		result = masks.empty() ? masks : masks + _T("|");
+		*result += _T("fe:") + identifier;
 	}
 	else if (command >= ID_FILTERMENU_CONTENT_CONTAINS && command <= ID_FILTERMENU_CONTENT_LAST_LINE_NOT_CONTAINS)
 	{
@@ -582,3 +664,118 @@ std::optional<String> CFileFilterHelperMenu::OnCommand(const String& masks, int 
 	return result;
 }
 
+std::unique_ptr<CFileFilterHelperMenu> CFileFilterHelperMenu::AppendColumnFilterMenu(CMenu* pPopup, const tchar_t* pRegName, bool is3Way)
+{
+	std::unique_ptr<CFileFilterHelperMenu> pMenu(new CFileFilterHelperMenu());
+	std::optional<int> menuId;
+	int menuItemId = 0;
+
+	pMenu->m_is3Way = is3Way;
+	pMenu->m_colName = pRegName;
+
+	if (tc::tcschr(pRegName, _T('.')) != nullptr)
+	{
+		// Column names containing '.' represent additional properties.
+		bool supported = true;
+		tchar_t firstChar = pRegName[0];
+		if (firstChar == _T('A'))
+			pMenu->m_targetSide = 0;
+		else if (firstChar == _T('L'))
+			pMenu->m_targetSide = 1;
+		else if (firstChar == _T('M'))
+			pMenu->m_targetSide = 2;
+		else if (firstChar == _T('R'))
+			pMenu->m_targetSide = 3;
+		else
+			supported = false;
+		if (supported)
+		{
+			String propName = pRegName + 1;
+			PropertySystem ps({ propName });
+			VARTYPE vt;
+			ps.GetPropertyType(0, vt);
+			if (vt == VT_I4 || vt == VT_UI4 || vt == VT_I8 || vt == VT_UI8 ||
+				vt == VT_R4 || vt == VT_R8 || vt == VT_LPWSTR || vt == (VT_VECTOR | VT_LPWSTR))
+			{
+				menuId = -1;
+				menuItemId = ID_FILTERMENU_ADDITIONAL_PROP_DIALOG;
+				pMenu->m_propName = propName;
+			}
+		}
+	}
+
+	struct ColumnMapping { const tchar_t* suffix; int menuId; int menuItemId; };
+	static const ColumnMapping mappings[] = {
+		{ _T("Name"), -1, ID_FILTERMENU_FILENAME },
+		{ _T("Path"), -1, ID_FILTERMENU_RELATIVEFOLDER },
+		{ _T("Ext"), -1, ID_FILTERMENU_EXTENSION },
+		{ _T("Status"), -1, ID_FILTERMENU_COMPARISON_RESULT },
+		{ _T("StatusAbbr"), -1, ID_FILTERMENU_COMPARISON_RESULT },
+		{ _T("Binary"), IDR_POPUP_FILTERMENU_BINARY, -1 },
+		{ _T("Snsdiffs"), -1, ID_FILTERMENU_DIFFERENCES },
+		{ _T("Snidiffs"), -1, ID_FILTERMENU_IGNORED_DIFFS },
+		{ _T("mtime"), IDR_POPUP_FILTERMENU_DATE, -1 },
+		{ _T("ctime"), IDR_POPUP_FILTERMENU_DATE, -1 },
+		{ _T("size"), IDR_POPUP_FILTERMENU_SIZE, -1 },
+		{ _T("sizeShort"), IDR_POPUP_FILTERMENU_SIZE, -1 },
+		{ _T("attr"), IDR_POPUP_FILTERMENU_ATTR, -1 },
+		{ _T("encoding"), -1, ID_FILTERMENU_CODEPAGE },
+		{ _T("Unpacker"), -1, ID_FILTERMENU_UNPACKER },
+		{ _T("Prediffer"), -1, ID_FILTERMENU_PREDIFFER },
+	};
+
+	for (const auto& mapping : mappings)
+	{
+		if (tc::tcscmp(pRegName, mapping.suffix) == 0)
+		{
+			pMenu->m_targetSide = 0;
+			menuId = mapping.menuId;
+			menuItemId = mapping.menuItemId;
+			break;
+		}
+	}
+	if (!menuId.has_value())
+	{
+		// Check if the column name starts with L, M, or R (indicating side)
+		tchar_t firstChar = pRegName[0];
+		if (firstChar == _T('L') || firstChar == _T('M') || firstChar == _T('R'))
+		{
+			// Set target side: L=1, M=2, R=3
+			pMenu->m_targetSide = (firstChar == _T('L')) ? 1 : (firstChar == _T('M')) ? 2 : 3;
+
+			// Check suffix to determine menu ID
+			const tchar_t* suffix = pRegName + 1;
+			for (const auto& mapping : mappings)
+			{
+				if (tc::tcscmp(suffix, mapping.suffix) == 0)
+				{
+					menuId = mapping.menuId;
+					menuItemId = mapping.menuItemId;
+					break;
+				}
+			}
+		}
+	}
+	if (!menuId.has_value())
+		return nullptr;
+
+	if (menuItemId != -1)
+	{
+		pPopup->AppendMenu(MF_SEPARATOR);
+		pPopup->AppendMenu(MF_STRING, menuItemId, _("&Filter by This Column...").c_str());
+	}
+	else
+	{
+		VERIFY(pMenu->LoadMenu(*menuId));
+		CMenu* pSubMenu = pMenu->GetSubMenu(0);
+		I18n::TranslateMenu(pMenu->m_hMenu);
+		pPopup->AppendMenu(MF_SEPARATOR);
+		pPopup->AppendMenu(MF_POPUP, static_cast<int>(reinterpret_cast<uintptr_t>(pSubMenu->m_hMenu)), _("&Filter by This Column").c_str());
+	}
+	return pMenu;
+}
+
+std::optional<String> CFileFilterHelperMenu::HandleMenuCommand(const String& masks, int command, CWnd* pParentWnd)
+{
+	return OnCommand(masks, command, pParentWnd);
+}

@@ -653,7 +653,7 @@ std::vector<TEXTBLOCK> CMergeEditView::GetAdditionalTextBlocks (int nLineIndex)
 		return emptyBlocks;
 
 	CMergeDoc *pDoc = GetDocument();
-	if (pDoc->IsEditedAfterRescan(m_nThisPane))
+	if (pDoc->IsEditedAfterRescan(-1))
 		return emptyBlocks;
 	
 	int nDiff = pDoc->m_diffList.LineToDiff(nLineIndex);
@@ -2652,11 +2652,11 @@ bool CMergeEditView::MergeModeKeyDown(MSG* pMsg)
 	bool bHandled = false;
 
 	// Allow default text selection when SHIFT pressed
-	if (::GetAsyncKeyState(VK_SHIFT))
+	if (::GetAsyncKeyState(VK_SHIFT) < 0)
 		return false;
 
 	// Allow default editor functions when CTRL pressed
-	if (::GetAsyncKeyState(VK_CONTROL))
+	if (::GetAsyncKeyState(VK_CONTROL) < 0)
 		return false;
 
 	// If we are in merging mode (merge with cursor keys)

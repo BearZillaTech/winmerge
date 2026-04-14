@@ -15,6 +15,7 @@
 #include <afxcview.h>
 #include <memory>
 #include <optional>
+#include <unordered_map>
 #include "OptionsDirColors.h"
 #include "SortHeaderCtrl.h"
 #include "UnicodeString.h"
@@ -42,6 +43,7 @@ class CDiffContext;
 class DirViewColItems;
 class DirItemEnumerator;
 struct IListCtrl;
+class CFileFilterHelperMenu;
 
 /**
  * @brief Position value for special items (..) in directory compare view.
@@ -138,7 +140,6 @@ private:
 	bool AreItemsComparable(SELECTIONTYPE selectionType, bool openableForDir = true);
 	bool AreItemsComparableIndivisually(UINT nID, bool openableForDir);
 	void DoUpdateOpen(SELECTIONTYPE selectionType, CCmdUI* pCmdUI, bool openableForDir = true);
-	void RemoveDuplicatedActions(FileActionScript & actions);
 	void ConfirmAndPerformActions(FileActionScript & actions);
 	void PerformActionList(FileActionScript & actions);
 	void UpdateAfterFileScript(FileActionScript & actionList);
@@ -146,6 +147,7 @@ private:
 
 // End DirActions.cpp
 	void ReflectGetdispinfo(NMLVDISPINFO *);
+	bool HasShowableDescendant(DIFFITEM *parent);
 
 // Implementation in DirViewColHandler.cpp
 public:
@@ -216,6 +218,7 @@ protected:
 	std::optional<int> m_firstDiffItem;
 	std::optional<int> m_lastDiffItem;
 	DIRCOLORSETTINGS m_cachedColors; /**< Cached color settings */
+	std::unordered_map<DIFFITEM*, bool> m_hasShowableDescendantCache;
 	bool m_bUseColors;
 
 	std::unique_ptr<CShellContextMenu> m_pShellContextMenuLeft; /**< Shell context menu for group of left files */
@@ -225,6 +228,7 @@ protected:
 	HMENU m_hCurrentMenu; /**< Current shell context menu (either left or right) */
 	std::unique_ptr<DirViewTreeState> m_pSavedTreeState;
 	std::unique_ptr<DirViewColItems> m_pColItems;
+	std::unique_ptr<CFileFilterHelperMenu> m_pFilterMenu;
 	int m_nActivePane;
 
 	// Generated message map functions
@@ -345,6 +349,8 @@ protected:
 	afx_msg void OnUpdateViewShowHiddenItems(CCmdUI* pCmdUI);
 	afx_msg void OnViewTreeMode();
 	afx_msg void OnUpdateViewTreeMode(CCmdUI* pCmdUI);
+	afx_msg void OnViewShowEmptyFolders();
+	afx_msg void OnUpdateViewShowEmptyFolders(CCmdUI* pCmdUI);
 	afx_msg void OnViewExpandAllSubdirs();
 	afx_msg void OnViewExpandDifferentSubdirs();
 	afx_msg void OnViewExpandIdenticalSubdirs();
@@ -410,6 +416,7 @@ protected:
 	afx_msg void OnStatusBarClick(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnViewDisplayFilterBarApply();
 	afx_msg void OnViewDisplayFilterBar();
+	afx_msg void OnFilterMenuCommand(UINT nID);
 
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()

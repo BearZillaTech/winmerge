@@ -229,6 +229,131 @@ Internally, values may be of the following types: Boolean, Integer, Real,
 Timestamp, String, File Content, Array, or <literal>undefined</literal>.</para>
       </section>
 
+      <section id="FilterExpression_Directives">
+        <title>Directives</title>
+
+        <para>
+Filter expressions support directives that control how the expression is
+evaluated.  Directives are specified at the beginning of the expression,
+prefixed with <literal>@</literal>, and separated from the expression by
+whitespace.</para>
+
+        <section id="FilterExpression_CaseSensitivity">
+          <title>Case Sensitivity Directives</title>
+
+          <para>
+By default, all string comparison operators (<literal>=</literal>,
+<literal>!=</literal>, <literal>&lt;</literal>, <literal>&lt;=</literal>,
+<literal>&gt;</literal>, <literal>&gt;=</literal>,
+<literal>contains</literal>, <literal>recontains</literal>,
+<literal>like</literal>, <literal>matches</literal>)  are
+case-insensitive. You can control this behavior using the following
+directives:</para>
+
+          <variablelist>
+            <varlistentry>
+              <term><literal>@cs</literal>, <literal>@casesensitive</literal></term>
+              <listitem>
+                <para>
+Enable case-sensitive comparison. With these directives,
+<literal>"ABC"</literal> and <literal>"abc"</literal> are considered
+different.</para>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term><literal>@ci</literal>, <literal>@caseinsensitive</literal></term>
+              <listitem>
+                <para>
+Enable case-insensitive comparison (default behavior). With these
+directives, <literal>"ABC"</literal> and <literal>"abc"</literal> are
+considered identical.</para>
+              </listitem>
+            </varlistentry>
+          </variablelist>
+
+          <example>
+            <title>Case Sensitivity Examples</title>
+<programlisting>@cs Name = "README.txt"           ## Case-sensitive: matches only "README.txt"
+@ci Name = "readme.txt"           ## Case-insensitive: matches "README.txt", "readme.txt", "ReadMe.TXT", etc.
+@casesensitive Extension = "TXT"  ## Case-sensitive: matches only files with ".TXT" extension
+@caseinsensitive Content contains "error"  ## Case-insensitive: matches "Error", "ERROR", "error", etc.</programlisting></example>
+        </section>
+
+        <section id="FilterExpression_Optimize">
+          <title>Optimization Directives</title>
+
+          <para>
+By default, filter expressions are optimized to improve performance. You can
+control this behavior using the following directives:</para>
+
+          <variablelist>
+            <varlistentry>
+              <term><literal>@optimize</literal>, <literal>@opt</literal></term>
+              <listitem>
+                <para>
+Enable filter expression optimization (default behavior). This may improve
+performance for complex expressions.</para>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term><literal>@nooptimize</literal>, <literal>@noopt</literal></term>
+              <listitem>
+                <para>
+Disable filter expression optimization. This is useful for debugging or when
+optimization causes unexpected results.</para>
+              </listitem>
+            </varlistentry>
+          </variablelist>
+
+          <example>
+            <title>Optimization Examples</title>
+<programlisting>@optimize Size &gt; 10MB and Extension = "log"     ## Enable optimization (default)
+@noopt Name matches "complex[0-9]+pattern"    ## Disable optimization for debugging
+@nooptimize Content contains "special-case"   ## Disable optimization</programlisting></example>
+        </section>
+
+        <section id="FilterExpression_Name">
+          <title>Name Directive</title>
+
+          <para>
+The <literal>@name</literal> directive allows you to assign a descriptive
+name to a filter expression.  This name is intended for use in error
+messages and logs to help identify which filter expression caused an issue.</para>
+
+          <variablelist>
+            <varlistentry>
+              <term><literal>@name="Filter Name"</literal>, <literal>@name=FilterName</literal></term>
+              <listitem>
+                <para>
+Assigns a name to the filter expression. If the name contains spaces or
+special characters, it must be enclosed in double quotes. Names without
+spaces can be specified without quotes.</para>
+                <para>
+The specified name will be used in error messages and diagnostic output to
+identify the filter.  This is particularly useful when working with multiple
+complex filter expressions.</para>
+              </listitem>
+            </varlistentry>
+          </variablelist>
+
+          <example>
+            <title>Name Directive Examples</title>
+<programlisting>@name="Large Image Files" Size &gt; 10MB and Extension = "png"
+@name=SmallTextFiles Size &lt; 1KB and Extension = "txt"
+@name="Modified Today" Date &gt;= today()
+@name="Test Filter" @cs Name like "test_*.cpp"</programlisting></example>
+
+          <note>
+            <para>
+The <literal>@name</literal> directive can be combined with other
+directives.  When multiple directives are used, they should all appear at
+the beginning of the expression, separated by whitespace.</para>
+          </note>
+        </section>
+      </section>
+
       <section id="FilterExpression_Attributes">
         <title>Attributes</title>
 
@@ -242,63 +367,63 @@ attribute applies to by using a prefix.</para>
           <title>Core Attributes</title>
           <variablelist>
             <varlistentry>
-              <term>Exists</term>
+              <term><varname>Exists</varname></term>
               <listitem><para>Returns <literal>true</literal> if the file exists, <literal>false</literal>
 otherwise</para></listitem>
             </varlistentry>
             <varlistentry>
-              <term>Name</term>
+              <term><varname>Name</varname></term>
               <listitem><para>File name</para></listitem>
             </varlistentry>
             <varlistentry>
-              <term>BaseName</term>
+              <term><varname>BaseName</varname></term>
               <listitem><para>Returns the filename without extension. For example, "document.txt" returns
 "document".</para></listitem>
             </varlistentry>
             <varlistentry>
-              <term>Extension</term>
+              <term><varname>Extension</varname></term>
               <listitem><para>File extension</para></listitem>
             </varlistentry>
             <varlistentry>
-              <term>IsFolder</term>
+              <term><varname>IsFolder</varname></term>
               <listitem><para>Returns true if the item is a folder/directory, false if it's a file.</para></listitem>
             </varlistentry>
             <varlistentry>
-              <term>תיקייה</term>
+              <term><varname>Folder</varname></term>
               <listitem><para>Returns the relative path excluding the file name and base folder</para></listitem>
             </varlistentry>
             <varlistentry>
-              <term>RelPath</term>
+              <term><varname>RelPath</varname></term>
               <listitem><para>Returns the relative path from the comparison root directory, including both
 folder path and filename. For example, if comparing "C:\Project" and the
 file is at "C:\Project\src\main.cpp", RelPath returns "src\main.cpp".</para></listitem>
             </varlistentry>
             <varlistentry>
-              <term>FullPath</term>
+              <term><varname>FullPath</varname></term>
               <listitem><para>Returns the full path of the file</para></listitem>
             </varlistentry>
             <varlistentry>
-              <term>Size</term>
+              <term><varname>Size</varname></term>
               <listitem><para>File size</para></listitem>
             </varlistentry>
             <varlistentry>
-              <term>Date</term>
+              <term><varname>Date</varname></term>
               <listitem><para>Last modified timestamp</para></listitem>
             </varlistentry>
             <varlistentry>
-              <term>DateStr</term>
+              <term><varname>DateStr</varname></term>
               <listitem><para>Last modified date string in <literal>yyyy-MM-dd</literal> format</para></listitem>
             </varlistentry>
             <varlistentry>
-              <term>CreationTime</term>
+              <term><varname>CreationTime</varname></term>
               <listitem><para>Creation date timestamp</para></listitem>
             </varlistentry>
             <varlistentry>
-              <term>Attributes</term>
+              <term><varname>Attributes</varname></term>
               <listitem><para>Returns the file attributes as an integer value</para></listitem>
             </varlistentry>
             <varlistentry>
-              <term>AttrStr</term>
+              <term><varname>AttrStr</varname></term>
               <listitem>
                 <para>Returns file attribute string. Examples: <literal>"R"</literal> for
 Read-only, <literal>"H"</literal> for Hidden, <literal>"A"</literal> for
@@ -316,7 +441,7 @@ used with folder items, the behavior is undefined.</para>
 
           <variablelist>
             <varlistentry>
-              <term>Content</term>
+              <term><varname>Content</varname></term>
               <listitem><para>Content of the file. Returns a FileContent-type value. Only
 <literal>contains</literal> and <literal>recontains</literal> can be used
 with this type.</para></listitem>
@@ -332,28 +457,28 @@ When used with file items, the behavior is undefined.</para>
 
           <variablelist>
             <varlistentry>
-              <term>Files</term>
+              <term><varname>Files</varname></term>
               <listitem><para>Number of files directly contained in the folder.</para></listitem>
             </varlistentry>
             <varlistentry>
-              <term>RecursiveFiles</term>
+              <term><varname>RecursiveFiles</varname></term>
               <listitem><para>Number of files contained in the folder, including all subfolders.</para></listitem>
             </varlistentry>
             <varlistentry>
-              <term>Items</term>
+              <term><varname>Items</varname></term>
               <listitem><para>Number of items (files and subfolders) directly contained in the folder.</para></listitem>
             </varlistentry>
             <varlistentry>
-              <term>RecursiveItems</term>
+              <term><varname>RecursiveItems</varname></term>
               <listitem><para>Number of items (files and subfolders) contained in the folder, including
 all subfolders.</para></listitem>
             </varlistentry>
             <varlistentry>
-              <term>TotalSize</term>
+              <term><varname>TotalSize</varname></term>
               <listitem><para>Total size of all files directly contained in the folder, in bytes.</para></listitem>
             </varlistentry>
             <varlistentry>
-              <term>RecursiveTotalSize</term>
+              <term><varname>RecursiveTotalSize</varname></term>
               <listitem><para>Total size of all files contained in the folder, including all subfolders,
 in bytes.</para></listitem>
             </varlistentry>
@@ -388,7 +513,7 @@ metadata defined by the Windows Property System schema (e.g.,
 
           <variablelist>
             <varlistentry>
-              <term>Prop</term>
+              <term><varname>Prop</varname></term>
               <listitem>
                 <para>
 Returns an array of property values (Left, Middle, Right) for the specified
@@ -397,7 +522,7 @@ canonical property name.  Example: <literal>prop("System.Title")</literal></para
             </varlistentry>
 
             <varlistentry>
-              <term>LeftProp</term>
+              <term><varname>LeftProp</varname></term>
               <listitem>
                 <para>
 Property value of the left-side file. Example:
@@ -406,18 +531,197 @@ Property value of the left-side file. Example:
             </varlistentry>
 
             <varlistentry>
-              <term>MiddleProp</term>
+              <term><varname>MiddleProp</varname></term>
               <listitem>
                 <para>Property value of the middle file (in 3-way comparison).</para>
               </listitem>
             </varlistentry>
 
             <varlistentry>
-              <term>RightProp</term>
+              <term><varname>RightProp</varname></term>
               <listitem>
                 <para>Property value of the right-side file.</para>
               </listitem>
             </varlistentry>
+          </variablelist>
+        </section>
+
+        <section>
+          <title>Display Filters Only Attributes</title>
+          <para>
+The following attributes are designed for use in <emphasis
+role="bold">Display filters only</emphasis> (specified via
+<guilabel>e:</guilabel>, <guilabel>e!:</guilabel>, <guilabel>fe:</guilabel>,
+<guilabel>fe!:</guilabel>, <guilabel>de:</guilabel>, or
+<guilabel>de!:</guilabel> prefixes in the Filter field).  They should not be
+used in file filter (<filename>.flt</filename>) include/exclude rules, as
+they require the comparison to be completed first and may lead to unexpected
+behavior.</para>
+
+          <variablelist>
+            <varlistentry>
+              <term><varname>Identical</varname></term>
+              <listitem>
+                <para>
+Returns <literal>true</literal> if the comparison result indicates the items
+are identical, <literal>false</literal> otherwise.  This is a global
+attribute (does not support side-specific prefixes).  Example:
+<literal>Identical</literal> to show only identical files.</para>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term><varname>Different</varname></term>
+              <listitem>
+                <para>
+Returns <literal>true</literal> if the comparison result indicates the items
+are different, <literal>false</literal> otherwise.  This is a global
+attribute (does not support side-specific prefixes).  Example:
+<literal>Different</literal> to show only different files.</para>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term><varname>Skipped</varname></term>
+              <listitem>
+                <para>
+Returns <literal>true</literal> if the comparison was skipped due to an
+error or filter rule, <literal>false</literal> otherwise.  This is a global
+attribute (does not support side-specific prefixes).  Example:
+<literal>Skipped</literal> to show only skipped items.</para>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term><varname>Binary</varname></term>
+              <listitem>
+                <para>
+Returns <literal>true</literal> if the file is detected as binary,
+<literal>false</literal> if it's text, or <literal>undefined</literal> if
+the file doesn't exist.  This attribute supports side-specific prefixes
+(e.g., <literal>LeftBinary</literal>, <literal>RightBinary</literal>).
+Example: <literal>allof(Binary)</literal> to show files that are binary on
+all sides.</para>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term><varname>DifferentLeftMiddle</varname></term>
+              <listitem>
+                <para>
+Returns <literal>true</literal> if the left and middle files are different
+in a 3-way comparison, <literal>false</literal> otherwise.  Returns
+<literal>undefined</literal> in 2-way comparisons.  This is a global
+attribute (does not support side-specific prefixes).  Example:
+<literal>DifferentLeftMiddle and not DifferentMiddleRight</literal> to find
+files where only left differs from middle.</para>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term><varname>DifferentMiddleRight</varname></term>
+              <listitem>
+                <para>
+Returns <literal>true</literal> if the middle and right files are different
+in a 3-way comparison, <literal>false</literal> otherwise.  Returns
+<literal>undefined</literal> in 2-way comparisons.  This is a global
+attribute (does not support side-specific prefixes).  Example:
+<literal>DifferentMiddleRight</literal> to show files where middle and right
+differ.</para>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term><varname>DifferentLeftRight</varname></term>
+              <listitem>
+                <para>
+In 3-way comparisons, returns <literal>true</literal> if the left and right
+files are different, <literal>false</literal> otherwise.  In 2-way
+comparisons, returns <literal>true</literal> if both files exist and are
+different.  This is a global attribute (does not support side-specific
+prefixes).  Example: <literal>DifferentLeftRight</literal> to show files
+where left and right differ.</para>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term><varname>Differences</varname></term>
+              <listitem>
+                <para>
+Returns the number of text differences in the file comparison.  This
+attribute is only meaningful for text files that have been compared.  This
+is a global attribute (does not support side-specific prefixes).  Example:
+<literal>Differences &gt; 0</literal> to show files with differences, or
+<literal>Differences &gt; 10</literal> to show files with more than 10
+differences.</para>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term><varname>IgnoredDiffs</varname></term>
+              <listitem>
+                <para>
+Returns the number of ignored differences in the file comparison
+(differences filtered by line filters or whitespace settings).  This
+attribute is only meaningful for text files that have been compared.  This
+is a global attribute (does not support side-specific prefixes).  Example:
+<literal>IgnoredDiffs &gt; 0</literal> to show files with ignored
+differences, or <literal>Differences = 0 and IgnoredDiffs &gt; 0</literal>
+to show files that are identical except for ignored differences.</para>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term><varname>Unpacker</varname></term>
+              <listitem>
+                <para>
+Returns the name of the unpacker plugin used for the file comparison, or an
+empty string if no unpacker was used.  This is a global attribute (does not
+support side-specific prefixes).  Example: <literal>Unpacker =
+"CompareMSExcelFiles"</literal> to show files compared using the Excel
+unpacker, or <literal>Unpacker != ""</literal> to show all files where an
+unpacker was used.</para>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term><varname>Prediffer</varname></term>
+              <listitem>
+                <para>
+Returns the name of the prediffer plugin used for the file comparison, or an
+empty string if no prediffer was used.  This is a global attribute (does not
+support side-specific prefixes).  Example: <literal>Prediffer =
+"IgnoreColumns"</literal> to show files compared using the IgnoreColumns
+prediffer, or <literal>Prediffer != ""</literal> to show all files where a
+prediffer was used.</para>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term><varname>Codepage</varname></term>
+              <listitem>
+                <para>
+Returns the file's codepage (character encoding) as an integer value.  This
+attribute supports side-specific prefixes (e.g.,
+<literal>LeftCodepage</literal>, <literal>RightCodepage</literal>).
+Example: <literal>Codepage = 65001</literal> to show UTF-8 files, or
+<literal>allof(Codepage = 65001)</literal> to show files that are UTF-8 on
+all sides.</para>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term><varname>HasBOM</varname></term>
+              <listitem>
+                <para>
+Returns <literal>true</literal> if the file has a Byte Order Mark (BOM),
+<literal>false</literal> otherwise.  This attribute supports side-specific
+prefixes (e.g., <literal>LeftHasBOM</literal>,
+<literal>RightHasBOM</literal>).  Example: <literal>HasBOM</literal> to show
+files with BOM, or <literal>not HasBOM</literal> to show files without BOM.</para>
+              </listitem>
+            </varlistentry>
+
           </variablelist>
         </section>
 
@@ -503,10 +807,13 @@ result is <literal>true</literal> if any element is <literal>true</literal>.</pa
         <title>Operators</title>
 
         <para>
-All string comparison operators (such as <literal>=</literal>,
-<literal>!=</literal>, <literal>like</literal>, <literal>matches</literal>,
-<literal>contains</literal>, and <literal>recontains</literal>) are
-currently case-insensitive.</para>
+By default, all string comparison operators (such as <literal>=</literal>,
+<literal>!=</literal>, <literal>&lt;</literal>, <literal>&lt;=</literal>,
+<literal>&gt;</literal>, <literal>&gt;=</literal>, <literal>like</literal>,
+<literal>matches</literal>, <literal>contains</literal>, and
+<literal>recontains</literal>)  are case-insensitive. You can control this
+behavior using directives (see <xref
+linkend="FilterExpression_CaseSensitivity" />).</para>
 
         <variablelist>
           <varlistentry>
@@ -576,14 +883,14 @@ exists.</para>
 
         <variablelist>
           <varlistentry>
-            <term>lineCount(<replaceable>content</replaceable>)</term>
+            <term><function>lineCount</function>(<replaceable>content</replaceable>)</term>
             <listitem><para>Returns the number of lines in the file content or file content array as an
 <literal>Integer</literal>. If <replaceable>content</replaceable> is an
 array, the result is an integer array. Example:
 <literal>lineCount(Content)</literal></para></listitem>
           </varlistentry>
           <varlistentry>
-            <term>sublines(<replaceable>content</replaceable>,
+            <term><function>sublines</function>(<replaceable>content</replaceable>,
 <replaceable>start</replaceable>, <replaceable>count</replaceable>)</term>
             <listitem>
               <para>
@@ -594,21 +901,21 @@ result is an array of strings.</para>
             </listitem>
           </varlistentry>
           <varlistentry>
-            <term>strlen(<replaceable>source</replaceable>)</term>
+            <term><function>strlen</function>(<replaceable>source</replaceable>)</term>
             <listitem><para>Returns the length of the string as an <literal>Integer</literal>. If
 <replaceable>source</replaceable> is a string array, the result is an
 integer array. Example: <literal>strlen(Name)</literal></para></listitem>
           </varlistentry>
           <varlistentry>
-            <term>substr(<replaceable>source</replaceable>, <replaceable>start</replaceable>,
-<replaceable>count</replaceable>)</term>
+            <term><function>substr</function>(<replaceable>source</replaceable>,
+<replaceable>start</replaceable>, <replaceable>count</replaceable>)</term>
             <listitem><para>Returns a specific range of text from the <emphasis>string or string
 array</emphasis> as a <literal>String</literal>. If
 <replaceable>source</replaceable> is a string array, the result is a string
 array. Example: <literal>substr(Name, 0, 3)</literal></para></listitem>
           </varlistentry>
           <varlistentry>
-            <term>replace(str, from, to)</term>
+            <term><function>replace</function>(str, from, to)</term>
             <listitem>
               <para>
 Replaces all occurrences of the string <replaceable>from</replaceable> with
@@ -618,7 +925,7 @@ Example: <literal>replace(name, ".bak", ".txt")</literal></para>
             </listitem>
           </varlistentry>
           <varlistentry>
-            <term>regexReplace(str, pattern, replacement)</term>
+            <term><function>regexReplace</function>(str, pattern, replacement)</term>
             <listitem>
               <para>
 Replaces all matches of the regular expression pattern with the replacement
@@ -629,7 +936,7 @@ strings with replacements applied.  Example: <literal>regexReplace(name,
             </listitem>
           </varlistentry>
           <varlistentry>
-            <term>replaceWithList(str, filepath)</term>
+            <term><function>replaceWithList</function>(str, filepath)</term>
             <listitem>
               <para>
 Replaces multiple strings in <replaceable>str</replaceable> using
@@ -652,7 +959,7 @@ applies replacements from file to file name</para></listitem>
             </listitem>
           </varlistentry>
           <varlistentry>
-            <term>regexReplaceWithList(str, filepath)</term>
+            <term><function>regexReplaceWithList</function>(str, filepath)</term>
             <listitem>
               <para>
 Replaces strings in <replaceable>str</replaceable> using regular expression
@@ -676,7 +983,7 @@ to file name</para></listitem>
             </listitem>
           </varlistentry>
           <varlistentry>
-            <term>normalizeUnicode(str[, form])</term>
+            <term><function>normalizeUnicode</function>(str[, form])</term>
             <listitem>
               <para>
 Normalizes Unicode string. The optional form parameter specifies the
@@ -689,7 +996,7 @@ normalized strings.  Example: <literal>normalizeUnicode(name,
           </varlistentry>
           <varlistentry>
             <term>
-toLower(<replaceable>str</replaceable>)</term>
+<function>toLower</function>(<replaceable>str</replaceable>)</term>
             <listitem>
               <para>
 Converts all characters in the string to lowercase.  If
@@ -700,7 +1007,7 @@ returns <literal>"hello world"</literal></para>
           </varlistentry>
           <varlistentry>
             <term>
-toUpper(<replaceable>str</replaceable>)</term>
+<function>toUpper</function>(<replaceable>str</replaceable>)</term>
             <listitem>
               <para>
 Converts all characters in the string to uppercase.  If
@@ -711,7 +1018,7 @@ returns <literal>"HELLO WORLD"</literal></para>
           </varlistentry>
           <varlistentry>
             <term>
-toHalfWidth(<replaceable>str</replaceable>)</term>
+<function>toHalfWidth</function>(<replaceable>str</replaceable>)</term>
             <listitem>
               <para>
 Converts full-width characters to half-width characters.  Primarily used for
@@ -722,7 +1029,7 @@ converted strings.</para>
           </varlistentry>
           <varlistentry>
             <term>
-toFullWidth(<replaceable>str</replaceable>)</term>
+<function>toFullWidth</function>(<replaceable>str</replaceable>)</term>
             <listitem>
               <para>
 Converts half-width characters to full-width characters.  Primarily used for
@@ -733,7 +1040,7 @@ converted strings.</para>
           </varlistentry>
           <varlistentry>
             <term>
-toKatakana(<replaceable>str</replaceable>)</term>
+<function>toKatakana</function>(<replaceable>str</replaceable>)</term>
             <listitem>
               <para>
 Converts hiragana characters to katakana.  Non-hiragana characters remain
@@ -743,7 +1050,7 @@ array of converted strings.</para>
           </varlistentry>
           <varlistentry>
             <term>
-toHiragana(<replaceable>str</replaceable>)</term>
+<function>toHiragana</function>(<replaceable>str</replaceable>)</term>
             <listitem>
               <para>
 Converts katakana characters to hiragana.  Non-katakana characters remain
@@ -753,7 +1060,7 @@ array of converted strings.</para>
           </varlistentry>
           <varlistentry>
             <term>
-toSimplifiedChinese(<replaceable>str</replaceable>)</term>
+<function>toSimplifiedChinese</function>(<replaceable>str</replaceable>)</term>
             <listitem>
               <para>
 Converts traditional Chinese characters to simplified Chinese characters.
@@ -764,7 +1071,7 @@ converted strings.</para>
           </varlistentry>
           <varlistentry>
             <term>
-toTraditionalChinese(<replaceable>str</replaceable>)</term>
+<function>toTraditionalChinese</function>(<replaceable>str</replaceable>)</term>
             <listitem>
               <para>
 Converts simplified Chinese characters to traditional Chinese characters.
@@ -774,52 +1081,52 @@ converted strings.</para>
             </listitem>
           </varlistentry>
           <varlistentry>
-            <term>now()</term>
+            <term><function>now</function>()</term>
             <listitem><para>Returns the current date and time as a <literal>Timestamp</literal> value.</para></listitem>
           </varlistentry>
           <varlistentry>
-            <term>today()</term>
+            <term><function>today</function>()</term>
             <listitem><para>Returns today's date as a <literal>Timestamp</literal> value representing
 <literal>00:00:00.000</literal> at the start of the day.</para></listitem>
           </varlistentry>
           <varlistentry>
-            <term>startOfWeek(<replaceable>timestamp</replaceable>)</term>
+            <term><function>startOfWeek</function>(<replaceable>timestamp</replaceable>)</term>
             <listitem><para>Returns the first day of the week, which is always Sunday regardless of
 locale.</para></listitem>
           </varlistentry>
           <varlistentry>
-            <term>startOfMonth(<replaceable>timestamp</replaceable>)</term>
+            <term><function>startOfMonth</function>(<replaceable>timestamp</replaceable>)</term>
             <listitem><para>Returns the first day of the month.</para></listitem>
           </varlistentry>
           <varlistentry>
-            <term>startOfYear(<replaceable>timestamp</replaceable>)</term>
+            <term><function>startOfYear</function>(<replaceable>timestamp</replaceable>)</term>
             <listitem><para>Returns the first day of the year.</para></listitem>
           </varlistentry>
           <varlistentry>
-            <term>toDateStr(<replaceable>timestamp</replaceable>)</term>
+            <term><function>toDateStr</function>(<replaceable>timestamp</replaceable>)</term>
             <listitem><para>Converts the given timestamp to a date string in
 <literal>yyyy-MM-dd</literal> format. If
 <replaceable>timestamp</replaceable> is a timestamp array, the result is a
 string array.</para></listitem>
           </varlistentry>
           <varlistentry>
-            <term>abs(<replaceable>value</replaceable>)</term>
+            <term><function>abs</function>(<replaceable>value</replaceable>)</term>
             <listitem><para>Returns the absolute value of the <emphasis>integer or integer
 array</emphasis>. If <replaceable>value</replaceable> is an integer array,
 the result is an integer array.</para></listitem>
           </varlistentry>
           <varlistentry>
-            <term>allof(<replaceable>booleans</replaceable>)</term>
+            <term><function>allof</function>(<replaceable>booleans</replaceable>)</term>
             <listitem><para>Returns <literal>true</literal> if all elements in the <emphasis>boolean
 array</emphasis> satisfy the condition.</para></listitem>
           </varlistentry>
           <varlistentry>
-            <term>allequal(<replaceable>array</replaceable>)</term>
+            <term><function>allequal</function>(<replaceable>array</replaceable>)</term>
             <listitem><para>Returns <literal>true</literal> if all values in the array are equal.</para></listitem>
           </varlistentry>
           <varlistentry>
-            <term>isWithin(<replaceable>value</replaceable>, <replaceable>min</replaceable>,
-<replaceable>max</replaceable>)</term>
+            <term><function>isWithin</function>(<replaceable>value</replaceable>,
+<replaceable>min</replaceable>, <replaceable>max</replaceable>)</term>
             <listitem>
               <para>
 Returns <literal>true</literal> if <replaceable>value</replaceable> is
@@ -840,8 +1147,8 @@ are between 1KB and 10MB</para></listitem>
             </listitem>
           </varlistentry>
           <varlistentry>
-            <term>inRange(<replaceable>value</replaceable>, <replaceable>min</replaceable>,
-<replaceable>max</replaceable>)</term>
+            <term><function>inRange</function>(<replaceable>value</replaceable>,
+<replaceable>min</replaceable>, <replaceable>max</replaceable>)</term>
             <listitem>
               <para>
 Returns <literal>true</literal> if <replaceable>value</replaceable> is
@@ -862,11 +1169,11 @@ checks if any file was modified this month (excluding today)</para></listitem>
             </listitem>
           </varlistentry>
           <varlistentry>
-            <term>logError(<replaceable>value1</replaceable>,
+            <term><function>logError</function>(<replaceable>value1</replaceable>,
 <replaceable>value2</replaceable>, ...),
-logWarn(<replaceable>value1</replaceable>,
+<function>logWarn</function>(<replaceable>value1</replaceable>,
 <replaceable>value2</replaceable>, ...),
-logInfo(<replaceable>value1</replaceable>,
+<function>logInfo</function>(<replaceable>value1</replaceable>,
 <replaceable>value2</replaceable>, ...)</term>
             <listitem>
               <para>
@@ -886,7 +1193,7 @@ name(s) and checks if it's a temporary file</para></listitem>
             </listitem>
           </varlistentry>
           <varlistentry>
-            <term>if(<replaceable>condition</replaceable>,
+            <term><function>if</function>(<replaceable>condition</replaceable>,
 <replaceable>trueValue</replaceable>, <replaceable>falseValue</replaceable>)</term>
             <listitem>
               <para>
@@ -906,7 +1213,7 @@ doesn't exist</para></listitem>
             </listitem>
           </varlistentry>
           <varlistentry>
-            <term>ifEach(<replaceable>conditionArray</replaceable>,
+            <term><function>ifEach</function>(<replaceable>conditionArray</replaceable>,
 <replaceable>trueValue</replaceable>, <replaceable>falseValue</replaceable>)</term>
             <listitem>
               <para>
@@ -930,8 +1237,8 @@ checks if any file is between 100KB and 10MB</para></listitem>
             </listitem>
           </varlistentry>
           <varlistentry>
-            <term>choose(<replaceable>index</replaceable>, <replaceable>value0</replaceable>,
-<replaceable>value1</replaceable>, ...)</term>
+            <term><function>choose</function>(<replaceable>index</replaceable>,
+<replaceable>value0</replaceable>, <replaceable>value1</replaceable>, ...)</term>
             <listitem>
               <para>
 Selects a value from the arguments based on
@@ -950,7 +1257,7 @@ returns last value)</para></listitem>
             </listitem>
           </varlistentry>
           <varlistentry>
-            <term>chooseEach(<replaceable>indexArray</replaceable>,
+            <term><function>chooseEach</function>(<replaceable>indexArray</replaceable>,
 <replaceable>value0</replaceable>, <replaceable>value1</replaceable>, ...)</term>
             <listitem>
               <para>
@@ -970,11 +1277,11 @@ returns <literal>array("third", "first", "second")</literal></para></listitem>
             </listitem>
           </varlistentry>
           <varlistentry>
-            <term>andEach(<replaceable>value1</replaceable>,
+            <term><function>andEach</function>(<replaceable>value1</replaceable>,
 <replaceable>value2</replaceable>),
-orEach(<replaceable>value1</replaceable>,
+<function>orEach</function>(<replaceable>value1</replaceable>,
 <replaceable>value2</replaceable>),
-notEach(<replaceable>value</replaceable>)</term>
+<function>notEach</function>(<replaceable>value</replaceable>)</term>
             <listitem>
               <para>
 Element-wise logical operations. These functions operate on booleans,
@@ -1057,6 +1364,15 @@ Files with extensions from 'a' to 'm' and size less than 1MB</para></listitem>
 matching</para></listitem>
           <listitem><para><literal>toHalfWidth(Name) like "*.txt"</literal> - Match after converting
 full-width to half-width</para></listitem>
+          <listitem><para><literal>Different</literal> - Show only files/folders that are different
+(Display filter only)</para></listitem>
+          <listitem><para><literal>Identical</literal> - Show only files/folders that are identical
+(Display filter only)</para></listitem>
+          <listitem><para><literal>allof(Binary)</literal> - Show only files that are binary on all
+sides (Display filter only)</para></listitem>
+          <listitem><para><literal>DifferentLeftMiddle and not DifferentMiddleRight</literal> - In
+3-way comparison, show files where only left-middle pair differs (Display
+filter only)</para></listitem>
         </itemizedlist>
       </section>
     </section>
