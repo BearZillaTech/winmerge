@@ -62,7 +62,7 @@ pagina nella finestra di dialogo Opzioni.</para>
     <title>
 Opzioni di importazione ed esportazione<indexterm>
         <primary>importare file di opzioni</primary>
-      </indexterm>><indexterm>
+      </indexterm><indexterm>
         <primary>esportare file di opzioni</primary>
       </indexterm></title>
 
@@ -1401,7 +1401,7 @@ cartella) sia gli elementi spostati (cartella diverse).</para>
       <title>
 Rinomina/sposta le chiavi di rilevamento<indexterm>
           <primary>rinominare le chiavi di rilevamento</primary>
-        </indexterm>><indexterm>
+        </indexterm><indexterm>
           <primary>tasti di rilevamento movimento</primary>
         </indexterm></title>
 
@@ -1531,7 +1531,7 @@ cercare e con cosa sostituirlo.Esempio: <literal>replace(Name, ".backup",
 Inserisce <literal>regexReplace(expression, "pattern",
 "replacement")</literal> per sostituire il testo utilizzando le espressioni
 regolari.Supporta i riferimenti all'indietro ($1, $2, ecc.) nella stringa di
-sostituzione.Esempio: <literal>regexReplace(Name, "^(\\d+)_(.+)$",
+sostituzione.Esempio: <literal>regexReplace(Name, "^(\d+)_(.+)$",
 "$2")</literal> rimuove un numero iniziale e un carattere di sottolineatura
 dai nomi dei file.</para>
             </listitem>

@@ -77,8 +77,8 @@ BEGIN_MESSAGE_MAP(CImgMergeFrame, CMergeFrameCommon)
 	ON_COMMAND(ID_FILE_RIGHT_READONLY, OnFileReadOnlyRight)
 	ON_UPDATE_COMMAND_UI(ID_FILE_RIGHT_READONLY, OnUpdateFileReadOnlyRight)
 	ON_COMMAND(ID_RESCAN, OnFileReload)
-	ON_COMMAND_RANGE(ID_MERGE_COMPARE_TEXT, ID_MERGE_COMPARE_WEBPAGE, OnFileRecompareAs)
-	ON_UPDATE_COMMAND_UI_RANGE(ID_MERGE_COMPARE_TEXT, ID_MERGE_COMPARE_WEBPAGE, OnUpdateFileRecompareAs)
+	ON_COMMAND_RANGE(ID_MERGE_COMPARE_TEXT, ID_MERGE_COMPARE_FOLDER, OnFileRecompareAs)
+	ON_UPDATE_COMMAND_UI_RANGE(ID_MERGE_COMPARE_TEXT, ID_MERGE_COMPARE_FOLDER, OnUpdateFileRecompareAs)
 	// [Edit] menu
 	ON_COMMAND(ID_EDIT_UNDO, OnEditUndo)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_UNDO, OnUpdateEditUndo)
@@ -295,17 +295,17 @@ void CImgMergeFrame::MoveOnLoad(int nPane, int)
 	m_pImgMergeWindow->SetActivePane(nPane);
 }
 
-void CImgMergeFrame::ChangeFile(int nBuffer, const String& path)
+bool CImgMergeFrame::ChangeFile(int nBuffer, const String& path, const String& description)
 {
 	if (!PromptAndSaveIfNeeded(true))
-		return;
+		return false;
 
 	for (int pane = 0; pane < m_pImgMergeWindow->GetPaneCount(); ++pane)
 		RevokeDragDrop(m_pImgMergeWindow->GetPaneHWND(pane));
 
 	m_filePaths[nBuffer] = path;
-	m_nBufferType[nBuffer] = BUFFERTYPE::NORMAL;
-	m_strDesc[nBuffer].clear();
+	m_nBufferType[nBuffer] = description.empty() ? BUFFERTYPE::NORMAL : BUFFERTYPE::NORMAL_NAMED;
+	m_strDesc[nBuffer] = description;
 	int nActivePane = m_pImgMergeWindow->GetActivePane();
 
 	OpenImages();
@@ -321,6 +321,8 @@ void CImgMergeFrame::ChangeFile(int nBuffer, const String& path)
 
 	UpdateHeaderPath(nBuffer);
 	UpdateLastCompareResult();
+
+	return true;
 }
 
 bool CImgMergeFrame::IsModified() const
@@ -574,9 +576,28 @@ int CImgMergeFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		}
 		m_pImgMergeWindow->SetActivePane(pane);
 	});
-	m_wndFilePathBar.SetOnFileSelectedCallback([this](int pane, const String& sFilepath) {
-		ChangeFile(pane, sFilepath);
-		m_pImgMergeWindow->SetActivePane(pane);
+	m_wndFilePathBar.SetOnFileSelectedCallback([this](int pane, const String& sFilepath, const String& sDescription) {
+		if (ChangeFile(pane, sFilepath, sDescription))
+		{
+			m_pImgMergeWindow->SetActivePane(pane);
+			// Only add to MRU if description is empty (i.e., not from clipboard history)
+			if (sDescription.empty())
+				MruHelper::addToMru(pane, sFilepath);
+		}
+	});
+	m_wndFilePathBar.SetOnGetRecentItemsCallback([](int pane, unsigned maxCount, MruHelper::RecentItemType type) {
+		return MruHelper::GetRecentFiles(pane, maxCount, type);
+	});
+	m_wndFilePathBar.SetOnGetClipboardHistoryCallback([](unsigned maxCount) {
+		auto allItems = ClipboardHistory::GetItems(maxCount, 1);
+		std::vector<ClipboardHistory::Item> imageItems;
+		for (const auto& item : allItems)
+		{
+			// Filter to show only items with image data
+			if (item.pBitmapTempFile)
+				imageItems.push_back(item);
+		}
+		return imageItems;
 	});
 
 	// Merge frame also has a dockable bar at the very left
@@ -630,6 +651,7 @@ void CImgMergeFrame::LoadOptions()
 
 	m_pImgMergeWindow->SetHorizontalSplit(GetOptionsMgr()->GetBool(OPT_SPLIT_HORIZONTALLY));
 	m_pImgMergeWindow->SetShowDifferences(GetOptionsMgr()->GetBool(OPT_CMP_IMG_SHOWDIFFERENCES));
+	m_pImgMergeWindow->SetBlinkDifferences(GetOptionsMgr()->GetBool(OPT_CMP_IMG_BLINKDIFFERENCES));
 	m_pImgMergeWindow->SetOverlayMode(static_cast<IImgMergeWindow::OVERLAY_MODE>(GetOptionsMgr()->GetInt(OPT_CMP_IMG_OVERLAYMODE)));
 	m_pImgMergeWindow->SetOverlayAlpha(GetOptionsMgr()->GetInt(OPT_CMP_IMG_OVERLAYALPHA) / 100.0);
 	m_pImgMergeWindow->SetDraggingMode(static_cast<IImgMergeWindow::DRAGGING_MODE>(GetOptionsMgr()->GetInt(OPT_CMP_IMG_DRAGGING_MODE)));
@@ -650,6 +672,7 @@ void CImgMergeFrame::LoadOptions()
 void CImgMergeFrame::SaveOptions()
 {
 	GetOptionsMgr()->SaveOption(OPT_CMP_IMG_SHOWDIFFERENCES, m_pImgMergeWindow->GetShowDifferences());
+	GetOptionsMgr()->SaveOption(OPT_CMP_IMG_BLINKDIFFERENCES, m_pImgMergeWindow->GetBlinkDifferences());
 	GetOptionsMgr()->SaveOption(OPT_CMP_IMG_OVERLAYMODE, m_pImgMergeWindow->GetOverlayMode());
 	GetOptionsMgr()->SaveOption(OPT_CMP_IMG_OVERLAYALPHA, static_cast<int>(m_pImgMergeWindow->GetOverlayAlpha() * 100));
 	GetOptionsMgr()->SaveOption(OPT_CMP_IMG_DRAGGING_MODE, static_cast<int>(m_pImgMergeWindow->GetDraggingMode()));
@@ -1036,7 +1059,7 @@ void CImgMergeFrame::OnFileRecompareAs(UINT nID)
 
 	CloseNow();
 	GetMainFrame()->DoFileOrFolderOpen(&paths, dwFlags, strDesc, _T(""),
-		GetOptionsMgr()->GetBool(OPT_CMP_INCLUDE_SUBDIRS), nullptr, &infoUnpacker, nullptr, nID);
+		nullptr, &infoUnpacker, nullptr, nID);
 }
 
 void CImgMergeFrame::OnUpdateFileRecompareAs(CCmdUI* pCmdUI)
@@ -1057,7 +1080,7 @@ void CImgMergeFrame::OnOpenWithUnpacker()
 		String strDesc[3] = { m_strDesc[0], m_strDesc[1], m_strDesc[2] };
 		CloseNow();
 		GetMainFrame()->DoFileOrFolderOpen(&paths, dwFlags, strDesc, _T(""),
-			GetOptionsMgr()->GetBool(OPT_CMP_INCLUDE_SUBDIRS), nullptr, &infoUnpacker, nullptr,
+			nullptr, &infoUnpacker, nullptr,
 			GetOptionsMgr()->GetBool(OPT_PLUGINS_OPEN_IN_SAME_FRAME_TYPE) ? ID_MERGE_COMPARE_IMAGE : -ID_MERGE_COMPARE_IMAGE);
 	}
 }
