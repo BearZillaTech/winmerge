@@ -358,7 +358,7 @@ LoadFromFile (const tchar_t* pszFileName, CRLFSTYLE nCrlfStyle /*= CRLFSTYLE::AU
   int nExt = GetExtPosition (pszFileName);
   if (pszFileName[nExt] == _T ('.'))
     nExt++;
-  CrystalLineParser::TextDefinition *def = CrystalLineParser::GetTextType (pszFileName + nExt);
+  LangServices::TextDefinition *def = LangServices::GetTextType (pszFileName + nExt);
   if (def && def->encoding != -1)
     m_nSourceEncoding = def->encoding;
 
@@ -750,7 +750,8 @@ GetLineFlags (int nLine) const
 
   if (nLine < 0 || nLine >= static_cast<int>(m_aLines.size()))
     {
-      ASSERT(false);      //  nLine is out of range.
+      // Return 0 for out-of-range lines instead of asserting
+      // This can happen when all lines are deleted
       return 0;
     }
 
@@ -989,11 +990,11 @@ RemoveView (CCrystalTextView * pView)
       m_lpViews.erase (it);
 }
 
-CrystalLineParser::TextDefinition *CCrystalTextBuffer::
+LangServices::TextDefinition *CCrystalTextBuffer::
 RetypeViews (const tchar_t* lpszFileName)
 {
   std::basic_string<tchar_t> sNew = GetExt (lpszFileName);
-  CrystalLineParser::TextDefinition *def = CrystalLineParser::GetTextType (sNew.c_str ());
+  LangServices::TextDefinition *def = LangServices::GetTextType (sNew.c_str ());
   for (auto* pView : m_lpViews)
     pView->SetTextType (def);
   return def;
@@ -1663,21 +1664,26 @@ InsertText (CCrystalTextView * pSource, int nLine, int nPos, const tchar_t* pszT
   if (!bHistory)
     {
       delete paSavedRevisionNumbers;
-      return true;
     }
-
-  bool bGroupFlag = false;
-  if (!m_bUndoGroup)
+  else
     {
-      BeginUndoGroup ();
-      bGroupFlag = true;
+      bool bGroupFlag = false;
+      if (!m_bUndoGroup)
+        {
+          BeginUndoGroup ();
+          bGroupFlag = true;
+        }
+  
+      AddUndoRecord (true, CEPoint (nPos, nLine), CEPoint (nEndChar, nEndLine),
+                     pszText, cchText, nAction, paSavedRevisionNumbers);
+  
+      if (bGroupFlag)
+        FlushUndoGroup (pSource);
     }
 
-  AddUndoRecord (true, CEPoint (nPos, nLine), CEPoint (nEndChar, nEndLine),
-                 pszText, cchText, nAction, paSavedRevisionNumbers);
-
-  if (bGroupFlag)
-    FlushUndoGroup (pSource);
+  if (pSource)
+    pSource->OnTextBufferChanged(true, CEPoint (nPos, nLine),
+        CEPoint (nEndChar, nEndLine), pszText, cchText, nAction);
 
   return true;
 }
@@ -1700,6 +1706,7 @@ bool CCrystalTextBuffer::			/* virtual base */
 DeleteText (CCrystalTextView * pSource, int nStartLine, int nStartChar,
             int nEndLine, int nEndChar, int nAction, bool bHistory /*= true*/, bool bExcludeInvisibleLines /*= true*/)
 {
+  bool bResult = true;
   bool bGroupFlag = false;
   if (bHistory)
     {
@@ -1734,20 +1741,23 @@ DeleteText (CCrystalTextView * pSource, int nStartLine, int nStartChar,
                   nEndLine2++;
                 }
               if (!DeleteText2 (pSource, nStartLine2, nStartChar2, nEndLine2, nEndChar2, nAction, bHistory))
-                return false;
+                {
+                  bResult = false;
+                  break;
+                }
             }
         }
     }
   else
     {
       if (!DeleteText2 (pSource, nStartLine, nStartChar, nEndLine, nEndChar, nAction, bHistory))
-        return false;
+        bResult = false;
     }
 
   if (bGroupFlag)
     FlushUndoGroup (pSource);
 
-  return true;
+  return bResult;
 }
 
 std::vector<uint32_t> *CCrystalTextBuffer::
@@ -1791,11 +1801,16 @@ DeleteText2 (CCrystalTextView * pSource, int nStartLine, int nStartChar,
   if (!bHistory)
     {
       delete paSavedRevisionNumbers;
-      return true;
+    }
+  else
+    {
+      AddUndoRecord (false, CEPoint (nStartChar, nStartLine), CEPoint (nEndChar, nEndLine),
+                     sTextToDelete.c_str (), sTextToDelete.length (), nAction, paSavedRevisionNumbers);
     }
 
-  AddUndoRecord (false, CEPoint (nStartChar, nStartLine), CEPoint (nEndChar, nEndLine),
-                 sTextToDelete.c_str (), sTextToDelete.length (), nAction, paSavedRevisionNumbers);
+  if (pSource)
+    pSource->OnTextBufferChanged(false, CEPoint (nStartChar, nStartLine),
+        CEPoint (nEndChar, nEndLine), sTextToDelete.c_str (), sTextToDelete.length (), nAction);
 
   return true;
 }

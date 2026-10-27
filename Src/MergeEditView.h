@@ -30,13 +30,18 @@ constexpr unsigned FLAG_RESCAN_WAITS_FOR_IDLE = 1;
 #include "edtlib.h"
 #include "GhostTextView.h"
 #include "OptionsDiffColors.h"
+#include "ISyntaxParser.h"
 #include <map>
 #include <vector>
+#include <memory>
 
 class IMergeEditStatus;
 class CLocationView;
 class CMergeDoc;
 struct DIFFRANGE;
+class CTreeSitterParser;
+class CMergeDiffNavigation;
+class CMergeConflictNavigation;
 
 /**
 This class is the base class for WinMerge editor panels.
@@ -54,6 +59,9 @@ Maybe in the future...
 */
 class CMergeEditView : public CGhostTextView
 {
+	friend class CMergeDiffNavigation;
+	friend class CMergeConflictNavigation;
+
 protected:
 	CMergeEditView();           // protected constructor used by dynamic creation
 	DECLARE_DYNCREATE(CMergeEditView)
@@ -88,6 +96,8 @@ private:
 	bool m_bCurrentLineIsDiff; /**< `true` if cursor is in diff line */
 	int m_nClickedColumn;
 
+	std::shared_ptr<LangServices::ISyntaxParser> m_pTreeSitterParser;
+
 // Attributes
 public:
 
@@ -97,18 +107,23 @@ public:
 	bool IsReadOnly(int pane) const;
 	void ShowDiff(bool bScroll, bool bSelectText);
 	virtual void OnEditOperation(int nAction, const tchar_t* pszText, size_t cchText) override;
+	virtual void OnTextBufferChanged (bool bInsert, const CEPoint & ptStartPos, const CEPoint & ptEndPos, const tchar_t* pszText, size_t cchText, int nActionType) override;
 	bool IsLineInCurrentDiff(int nLine) const;
 	void SelectNone();
 	void SelectDiff(int nDiff, bool bScroll = true, bool bSelectText = true);
 	void DeselectDiffIfCursorNotInCurrentDiff();
 	virtual CCrystalTextBuffer *LocateTextBuffer () override;
 	const CCrystalTextBuffer *LocateTextBuffer () const { return const_cast<CMergeEditView *>(this)->LocateTextBuffer(); };
+	int LineToDiff(int nLine) const;
+	int NextSignificantDiffFromLine(int nLine) const;
+	int PrevSignificantDiffFromLine(int nLine) const;
+	int NextSignificant3wayDiffFromLine(int line, int nDiffType) const;
+	int PrevSignificant3wayDiffFromLine(int line, int nDiffType) const;
 	void GetFullySelectedDiffs(int & firstDiff, int & lastDiff);
 	void GetFullySelectedDiffs(int & firstDiff, int & lastDiff, int & firstWordDiff,  int & lastWordDiff, const CEPoint *pptStart = nullptr, const CEPoint *ppEnd = nullptr);
 	void GetSelectedDiffs(int & firstDiff, int & lastDiff);
 	std::map<int, std::vector<int>> GetColumnSelectedWordDiffIndice();
 	CString GetSelectedText();
-	std::pair<int, int> GetSelectedLineAndCharacterCount();
 	CString GetLineText(int idx);
 	CMergeDoc* GetDocument();
 	const CMergeDoc *GetDocument() const { return const_cast<CMergeEditView *>(this)->GetDocument(); }
@@ -119,14 +134,16 @@ public:
 	void SelectArea(const CEPoint & ptStart, const CEPoint & ptEnd) { SetSelection(ptStart, ptEnd); } // make public
 	using CGhostTextView::GetSelection;
 	virtual void UpdateSiblingScrollPos (bool bHorz) override;
-    virtual std::vector<CrystalLineParser::TEXTBLOCK> GetMarkerTextBlocks(int nLineIndex) const override;
-	virtual std::vector<CrystalLineParser::TEXTBLOCK> GetAdditionalTextBlocks (int nLineIndex) override;
+	virtual std::vector<LangServices::TEXTBLOCK> GetMarkerTextBlocks(int nLineIndex) const override;
+	virtual std::vector<LangServices::TEXTBLOCK> GetAdditionalTextBlocks (int nLineIndex) override;
 	virtual CEColor GetColor(int nColorIndex) const override;
 	virtual void GetLineColors (int nLineIndex, CEColor & crBkgnd,
 			CEColor & crText, bool & bDrawWhitespace) override;
 	virtual void GetLineColors2 (int nLineIndex, DWORD ignoreFlags
 		, CEColor & crBkgnd, CEColor & crText, bool & bDrawWhitespace);
 	void WMGoto() { OnWMGoto(); };
+	CTreeSitterParser* GetTreeSitterParser();
+	void GotoTreeSitterDefinition();
 	void GotoLine(UINT nLine, bool bRealLine, int pane, bool bMoveAnchor = true, int nChar = -1);
 	int GetTopLine() const { return m_nTopLine; }
 	using CCrystalTextView::GetScreenLines;
@@ -147,6 +164,7 @@ public:
 	virtual void SetWordWrapping( bool bWordWrap ) override;
 	void UpdateStatusbar();
 	CMergeEditView *GetGroupView(int nPane) const;
+	int GetActiveGroup() const;
 
 	virtual void OnDisplayDiff(int nDiff=0);
 
@@ -154,12 +172,6 @@ public:
 	bool IsCursorInDiff() const;
 	bool IsDiffVisible(int nDiff);
 	bool IsDiffFiltered(int nDiff);
-	int FindFirstNonFilteredDiff();
-	int FindLastNonFilteredDiff();
-	int FindNextNonFilteredDiff(int startDiff = -1);
-	int FindPrevNonFilteredDiff(int startDiff = -1);
-	bool HasNextNonFilteredDiff();
-	bool HasPrevNonFilteredDiff();
 	void ZoomText(short amount);
 	virtual bool QueryEditable() override;
 	virtual void EnsureVisible(CEPoint pt) override;
@@ -210,6 +222,8 @@ protected:
 	afx_msg void OnEditPaste();
 	afx_msg void OnUpdateEditPaste(CCmdUI* pCmdUI);
 	afx_msg void OnEditUndo();
+	afx_msg void OnGotoDefinition();
+	afx_msg void OnUpdateGotoDefinition(CCmdUI* pCmdUI);
 	afx_msg void OnFirstdiff();
 	afx_msg void OnUpdateFirstdiff(CCmdUI* pCmdUI);
 	afx_msg void OnLastdiff();
@@ -255,6 +269,10 @@ protected:
 	afx_msg void OnUpdateAllRight(CCmdUI* pCmdUI);
 	afx_msg void OnAutoMerge();
 	afx_msg void OnUpdateAutoMerge(CCmdUI* pCmdUI);
+	int GetMergeTargetDiff();
+	String GetPaneNameForMergeMenu() const;
+	afx_msg void OnMergeChooseThis();
+	afx_msg void OnUpdateMergeChooseThis(CCmdUI* pCmdUI);
 	afx_msg void OnCopyX2Y(UINT nID);
 	afx_msg void OnCopyLinesX2Y(UINT nID);
 	afx_msg void OnX2Y(int srcPane, int dstPane, bool selectedLineOnly = false);
@@ -282,6 +300,7 @@ protected:
 	afx_msg void OnSelDiffCopyThird();
 	afx_msg void OnUpdateSelDiffCopyThird(CCmdUI* pCmdUI);
 	afx_msg void OnAddSyncPoint();
+	afx_msg void OnUpdateAddSyncPoint(CCmdUI* pCmdUI);
 	afx_msg void OnClearSyncPoints();
 	afx_msg void OnUpdateClearSyncPoints(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateEditUndo(CCmdUI* pCmdUI);
@@ -321,6 +340,7 @@ protected:
 	afx_msg void OnVScroll (UINT nSBCode, UINT nPos, CScrollBar * pScrollBar);
 	afx_msg void OnEditCopyLineNumbers();
 	afx_msg void OnUpdateEditCopyLinenumbers(CCmdUI* pCmdUI);
+	afx_msg void OnEditToggleBookmark();
 	afx_msg void OnViewLineDiffs();
 	afx_msg void OnUpdateViewLineDiffs(CCmdUI* pCmdUI);
 	afx_msg void OnViewLineNumbers();
@@ -344,6 +364,11 @@ protected:
 	afx_msg void OnUseFirstLineAsHeaders();
 	afx_msg void OnUpdateUseFirstLineAsHeaders(CCmdUI* pCmdUI);
 	afx_msg void OnAutoFitAllColumns();
+	afx_msg void OnIgnoreColumnInComparison(UINT nID);
+	afx_msg void OnUpdateIgnoreColumnInComparison(CCmdUI* pCmdUI);
+	afx_msg void OnResetIgnoredColumnsInComparison();
+	afx_msg void OnUpdateResetIgnoredColumnsInComparison(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateIgnoreColumnInComparisonCtrlClick(CCmdUI* pCmdUI);
 	afx_msg void OnFilterMenuColumn(UINT nID);
 	afx_msg void OnUpdateViewChangeScheme(CCmdUI *pCmdUI);
 	afx_msg void OnChangeScheme(UINT nID);
@@ -374,4 +399,3 @@ inline bool CMergeEditView::IsCursorInDiff() const
 {
 	return m_bCurrentLineIsDiff;
 }
-

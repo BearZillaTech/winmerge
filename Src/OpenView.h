@@ -21,6 +21,7 @@
 #include "ValidatingEdit.h"
 #include "FileFilterHelperMenu.h"
 #include "ClipboardHistory.h"
+#include "MruHelper.h"
 #include <array>
 
 class ProjectFile;
@@ -51,6 +52,9 @@ public:
 	CSuperComboBox	m_ctlPath[3];
 	CSuperComboBox	m_ctlUnpackerPipeline;
 	CSuperComboBox	m_ctlPredifferPipeline;
+	CValidatingEdit	m_ctlUnpackerPipelineEdit;
+	CValidatingEdit	m_ctlPredifferPipelineEdit;
+	CListCtrl	m_ctlRecentCompares; /**< Recent comparisons (MruHelper::GetRecentCompares), newest first */
 	CFileFilterHelperMenu m_menu;
 	String m_strPath[3];
 	bool m_bReadOnly[3];
@@ -100,6 +104,9 @@ private:
 	UINT m_nLastDropDownButton; /**< ID of last browse button that showed dropdown */
 	HTHEME m_hTheme; /**< Theme used for size grip on Vista and greater */
 	std::vector<ClipboardHistory::Item> m_cachedClipboardItems; /**< Cached clipboard items for menu consistency */
+	std::vector<MruHelper::RecentCompare> m_recentCompares; /**< Entries shown in m_ctlRecentCompares, same order */
+	bool m_bRecentComparesShown; /**< The recent comparison list is expanded (OPT_SHOW_RECENT_COMPARES) */
+	int m_nRecentComparesHeight; /**< Height added to the view when the list is expanded */
 // Overrides
 	public:
 virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
@@ -107,10 +114,12 @@ protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 	virtual void OnInitialUpdate(); // called first time after construct
 	virtual void OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint);
+	virtual void OnActivateView(BOOL bActivate, CView* pActivateView, CView* pDeactiveView);
 
 // Implementation
 public:
 	virtual ~COpenView();
+	int GetFormHeight() const;
 
 protected:
 	void SetStatus(UINT msgID);
@@ -120,6 +129,10 @@ protected:
 	void SaveComboboxStates();
 	String AskProjectFileName(bool bOpen);
 	void DropDown(NMHDR *pNMHDR, LRESULT *pResult, UINT nID, UINT nPopupID);
+	void ShowRecentCompares(bool bShow);
+	void UpdateRecentCompares();
+	void ResizeRecentComparesColumns();
+	void OpenRecentCompare(int nItem);
 
 // Generated message map functions
 protected:
@@ -137,6 +150,7 @@ protected:
 	afx_msg void OnExtEditChange();
 	afx_msg void OnSelectFilterDropDown(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnSelchangePathCombo(UINT nID);
+	afx_msg void OnSelchangePlugin(UINT nID);
 	afx_msg void OnSetfocusPathCombo(UINT id, NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnDragBeginPathCombo(UINT id, NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnSwapButton(int id1, int id2);
@@ -183,6 +197,10 @@ protected:
 	afx_msg void OnWindowPosChanging(WINDOWPOS* lpwndpos);
 	afx_msg void OnWindowPosChanged(WINDOWPOS* lpwndpos);
 	afx_msg void OnDestroy();
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+	afx_msg void OnRecentComparesShow();
+	afx_msg void OnClickRecentCompares(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnDblclkRecentCompares(NMHDR *pNMHDR, LRESULT *pResult);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

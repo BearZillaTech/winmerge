@@ -57,12 +57,14 @@ public:
 	int GetColDefaultOrder(int col) const;
 	const DirColInfo * GetDirColInfo(int col) const;
 	bool IsColById(int col, const char *idname) const;
+	bool IsColSideName(int col) const;
 	bool IsColName(int col) const;
 	bool IsColLmTime(int col) const;
 	bool IsColMmTime(int col) const;
 	bool IsColRmTime(int col) const;
 	bool IsColStatus(int col) const;
 	bool IsColStatusAbbr(int col) const;
+	bool IsColSortableWhileComparing(int col) const;
 	bool IsDefaultSortAscending(int col) const;
 	String GetColDisplayName(int col) const;
 	String GetColDescription(int col) const;
@@ -120,6 +122,7 @@ public:
 
 
 private:
+	int GetColIndexByName(const String& name) const;
 	void AddAdditionalPropertyName(const String& propertyName);
 	void RemoveAdditionalPropertyName(const String& propertyName);
 

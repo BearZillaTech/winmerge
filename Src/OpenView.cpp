@@ -12,10 +12,12 @@
 
 #include "stdafx.h"
 #include "OpenView.h"
+#include "OpenFrm.h"
 #include <vector>
 #include "UnicodeString.h"
 #include "Logger.h"
 #include "Merge.h"
+#include "MergeCmdLineInfo.h"
 #include "OpenDoc.h"
 #include "ProjectFile.h"
 #include "paths.h"
@@ -41,6 +43,7 @@
 #include "DarkModeLib.h"
 #include "ClipboardHistory.h"
 #include "ClipboardHistoryMenu.h"
+#include "PluginMenu.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -73,6 +76,8 @@ BEGIN_MESSAGE_MAP(COpenView, CFormView)
 	ON_CONTROL_RANGE(CBN_SELCHANGE, IDC_PATH0_COMBO, IDC_PATH2_COMBO, OnSelchangePathCombo)
 	ON_CONTROL_RANGE(CBN_EDITCHANGE, IDC_PATH0_COMBO, IDC_PATH2_COMBO, OnEditEvent)
 	ON_CONTROL_RANGE(BN_CLICKED, IDC_SELECT_UNPACKER, IDC_SELECT_PREDIFFER, OnSelectPlugin)
+	ON_CONTROL_RANGE(CBN_SELCHANGE, IDC_UNPACKER_COMBO, IDC_PREDIFFER_COMBO, OnSelchangePlugin)
+	ON_CONTROL_RANGE(CBN_EDITCHANGE, IDC_UNPACKER_COMBO, IDC_PREDIFFER_COMBO, OnSelchangePlugin)
 	ON_CBN_SELENDCANCEL(IDC_PATH0_COMBO, UpdateButtonStates)
 	ON_CBN_SELENDCANCEL(IDC_PATH1_COMBO, UpdateButtonStates)
 	ON_CBN_SELENDCANCEL(IDC_PATH2_COMBO, UpdateButtonStates)
@@ -133,6 +138,10 @@ BEGIN_MESSAGE_MAP(COpenView, CFormView)
 	ON_WM_WINDOWPOSCHANGED()
 	ON_WM_NCHITTEST()
 	ON_WM_DESTROY()
+	ON_WM_SIZE()
+	ON_BN_CLICKED(IDC_RECENT_COMPARES_SHOW, OnRecentComparesShow)
+	ON_NOTIFY(NM_CLICK, IDC_RECENT_COMPARES_LIST, OnClickRecentCompares)
+	ON_NOTIFY(NM_DBLCLK, IDC_RECENT_COMPARES_LIST, OnDblclkRecentCompares)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -161,6 +170,8 @@ COpenView::COpenView()
 	, m_nCompareMethod(0)
 	, m_nLastDropDownButton(0)
 	, m_hTheme(nullptr)
+	, m_bRecentComparesShown(false)
+	, m_nRecentComparesHeight(0)
 {
 	// CWnd::EnableScrollBarCtrl() called inside CScrollView::UpdateBars() is quite slow.
 	// Therefore, set m_bInsideUpdate = TRUE so that CScrollView::UpdateBars() does almost nothing.
@@ -182,6 +193,7 @@ void COpenView::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_PATH2_COMBO, m_ctlPath[2]);
 	DDX_Control(pDX, IDC_UNPACKER_COMBO, m_ctlUnpackerPipeline);
 	DDX_Control(pDX, IDC_PREDIFFER_COMBO, m_ctlPredifferPipeline);
+	DDX_Control(pDX, IDC_RECENT_COMPARES_LIST, m_ctlRecentCompares);
 	DDX_CBStringExact(pDX, IDC_PATH0_COMBO, m_strPath[0]);
 	DDX_CBStringExact(pDX, IDC_PATH1_COMBO, m_strPath[1]);
 	DDX_CBStringExact(pDX, IDC_PATH2_COMBO, m_strPath[2]);
@@ -246,6 +258,15 @@ void COpenView::OnInitialUpdate()
 		SetDlgItemText(ids[i], _T("\xf4"));
 	}
 
+	// Recent comparison list, collapsed by default (the view then has its original size). Expanded, it lies
+	// between the buttons and the status line, which moves down by the added height.
+	m_nRecentComparesHeight = 0;
+	m_ctlRecentCompares.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER | LVS_EX_INFOTIP);
+	m_ctlRecentCompares.InsertColumn(0, _("Comparison").c_str());
+	m_ctlRecentCompares.InsertColumn(1, _("Command line").c_str());
+	const bool bShowRecentCompares = GetOptionsMgr()->GetBool(OPT_SHOW_RECENT_COMPARES);
+	CheckDlgButton(IDC_RECENT_COMPARES_SHOW, bShowRecentCompares ? BST_CHECKED : BST_UNCHECKED);
+
 	m_constraint.InitializeCurrentSize(this);
 	m_constraint.InitializeSpecificSize(this, m_sizeOrig.cx, m_sizeOrig.cy);
 	m_constraint.SetMaxSizePixels(-1, m_sizeOrig.cy);
@@ -254,14 +275,13 @@ void COpenView::OnInitialUpdate()
 	m_constraint.DisallowHeightGrowth();
 	//m_constraint.SubclassWnd(); // install subclassing
 
+	ShowRecentCompares(bShowRecentCompares);
+
 	m_constraint.LoadPosition(_T("ResizeableDialogs"), _T("OpenView"), false); // persist size via registry
 	m_constraint.UpdateSizes();
 
 	COpenDoc* pDoc = GetDocument();
-
-	CString strTitle;
-	GetWindowText(strTitle);
-	pDoc->SetTitle(strTitle);
+	pDoc->SetTitle(_("Select Files or Folders").c_str());
 
 	m_files = pDoc->m_files;
 	m_bRecurse = pDoc->m_bRecurse;
@@ -333,6 +353,42 @@ void COpenView::OnInitialUpdate()
 		};
 	m_ctlExtEdit.Validate();
 	m_ctlExtEdit.SetCueBanner(strutils::format_string1(_("e.g. %1"), _T("*.txt|fe:Size > 100KB")).c_str());
+
+	if (m_ctlUnpackerPipeline.GetEditCtrl()->GetSafeHwnd())
+	{
+		m_ctlUnpackerPipelineEdit.SubclassWindow(m_ctlUnpackerPipeline.GetEditCtrl()->m_hWnd);
+		m_ctlUnpackerPipelineEdit.m_validator = [this](const CString& text, CString& error) -> bool
+			{
+				if (text.IsEmpty())
+					return true;
+				String pipeline = text;
+				auto pPluginPipeline = std::make_unique<PackingInfo>(pipeline);
+				String errorMessage;
+				bool result = pPluginPipeline->Validate(errorMessage);
+				error = errorMessage.c_str();
+				return result;
+			};
+		m_ctlUnpackerPipelineEdit.Validate();
+		m_ctlUnpackerPipelineEdit.SetCueBanner(strutils::format_string1(_("e.g. %1"), _T("le:toUpper(Line)|SortAscending")).c_str());
+	}
+
+	if (m_ctlPredifferPipeline.GetEditCtrl()->GetSafeHwnd())
+	{
+		m_ctlPredifferPipelineEdit.SubclassWindow(m_ctlPredifferPipeline.GetEditCtrl()->m_hWnd);
+		m_ctlPredifferPipelineEdit.m_validator = [this](const CString& text, CString& error) -> bool
+			{
+				if (text.IsEmpty())
+					return true;
+				String pipeline = text;
+				auto pPluginPipeline = std::make_unique<PrediffingInfo>(pipeline);
+				String errorMessage;
+				bool result = pPluginPipeline->Validate(errorMessage);
+				error = errorMessage.c_str();
+				return result;
+			};
+		m_ctlPredifferPipelineEdit.Validate();
+		m_ctlPredifferPipelineEdit.SetCueBanner(strutils::format_string1(_("e.g. %1"), _T("le:toUpper(Line)|IgnoreLeadingLineNumbers")).c_str());
+	}
 
 	if (!GetOptionsMgr()->GetBool(OPT_VERIFY_OPEN_PATHS))
 	{
@@ -561,7 +617,7 @@ void COpenView::OnWindowPosChanging(WINDOWPOS* lpwndpos)
 			CRect rc;
 			pFrameWnd->GetClientRect(&rc);
 			lpwndpos->flags |= SWP_FRAMECHANGED | SWP_SHOWWINDOW;
-			lpwndpos->cy = m_sizeOrig.cy;
+			lpwndpos->cy = GetFormHeight();
 			if (lpwndpos->flags & SWP_NOOWNERZORDER)
 			{
 				lpwndpos->x = rc.right - (lpwndpos->x + lpwndpos->cx);
@@ -744,7 +800,7 @@ void COpenView::OnCompare(UINT nID)
 			PackingInfo tmpPackingInfo(m_strUnpackerPipeline);
 			if (ID_UNPACKERS_FIRST <= nID && nID <= ID_UNPACKERS_LAST)
 			{
-				tmpPackingInfo.SetPluginPipeline(CMainFrame::GetPluginPipelineByMenuId(nID, FileTransform::UnpackerEventNames, ID_UNPACKERS_FIRST));
+				tmpPackingInfo.SetPluginPipeline(PluginMenu::GetPluginPipelineByMenuId(&tmpPackingInfo, nID, FileTransform::UnpackerEventNames, ID_UNPACKERS_FIRST));
 				nID = 0;
 			}
 			PrediffingInfo tmpPrediffingInfo(m_strPredifferPipeline);
@@ -851,7 +907,7 @@ void COpenView::OnCompare(UINT nID)
 	}
 	else if (ID_UNPACKERS_FIRST <= nID && nID <= ID_UNPACKERS_LAST)
 	{
-		tmpPackingInfo.SetPluginPipeline(CMainFrame::GetPluginPipelineByMenuId(nID, FileTransform::UnpackerEventNames, ID_UNPACKERS_FIRST));
+		tmpPackingInfo.SetPluginPipeline(PluginMenu::GetPluginPipelineByMenuId(&tmpPackingInfo, nID, FileTransform::UnpackerEventNames, ID_UNPACKERS_FIRST));
 		GetMainFrame()->DoFileOrFolderOpen(
 			&tmpPathContext, dwFlags.data(),
 			nullptr, _T(""), nullptr, &tmpPackingInfo, &tmpPrediffingInfo, 0, pOpenFolderParams.get());
@@ -893,8 +949,14 @@ void COpenView::OnUpdateCompare(CCmdUI *pCmdUI)
  *
  * Checks that paths are valid and sets filters.
  */
-void COpenView::OnOK() 
+void COpenView::OnOK()
 {
+	// Enter in the recent comparison list opens the selected comparison instead of the paths above
+	if (::GetFocus() == m_ctlRecentCompares.GetSafeHwnd() && m_ctlRecentCompares.GetSelectedCount() > 0)
+	{
+		OpenRecentCompare(m_ctlRecentCompares.GetNextItem(-1, LVNI_SELECTED));
+		return;
+	}
 	OnCompare(IDOK);
 }
 
@@ -1150,7 +1212,8 @@ void COpenView::DropDown(NMHDR* pNMHDR, LRESULT* pResult, UINT nID, UINT nPopupI
 			for (int i = 0; i < 3; i++)
 				tmpPath[i] = m_strPath[i].empty() ? _T("|.|") : m_strPath[i];
 			String filteredFilenames = strutils::join(std::begin(tmpPath), std::end(tmpPath), _T("|"));
-			CMainFrame::AppendPluginMenus(pPopup, filteredFilenames, FileTransform::UnpackerEventNames, true, ID_UNPACKERS_FIRST);
+			PluginMenu::AppendPluginMenus(pPopup, nullptr, filteredFilenames, FileTransform::UnpackerEventNames, 
+				PluginMenu::AddAllMenu|PluginMenu::AddSelectMenu, ID_UNPACKERS_FIRST);
 		}
 		pPopup->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON,
 			rcButton.left, rcButton.bottom, GetMainFrame());
@@ -1493,6 +1556,18 @@ void COpenView::OnEditEvent(UINT nID)
 		UpdateButtonStates();
 }
 
+void COpenView::OnSelchangePlugin(UINT nID)
+{
+	CValidatingEdit* edit = nullptr;
+	switch (nID)
+	{
+	case IDC_UNPACKER_COMBO: edit = &m_ctlUnpackerPipelineEdit; break;
+	case IDC_PREDIFFER_COMBO: edit = &m_ctlPredifferPipelineEdit; break;
+	default: return;
+	}
+	edit->OnEnChange();
+}
+
 /**
  * @brief Handle timer events.
  * Checks if paths are valid and sets control states accordingly.
@@ -1542,6 +1617,7 @@ void COpenView::OnSelectPlugin(UINT nID)
 		else
 			m_strPredifferPipeline = dlg.GetPluginPipeline();
 		UpdateData(FALSE);
+		OnSelchangePlugin(nID == IDC_SELECT_UNPACKER ? IDC_UNPACKER_COMBO : IDC_PREDIFFER_COMBO);
 	}
 }
 
@@ -1835,6 +1911,165 @@ void COpenView::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
 
 	if (nState == WA_ACTIVE || nState == WA_CLICKACTIVE)
 		UpdateButtonStates();
+}
+
+/**
+ * @brief Refresh the recent comparison list when the view becomes active,
+ * since comparisons opened in other windows change the list.
+ */
+void COpenView::OnActivateView(BOOL bActivate, CView* pActivateView, CView* pDeactiveView)
+{
+	__super::OnActivateView(bActivate, pActivateView, pDeactiveView);
+	if (bActivate && m_bRecentComparesShown)
+		UpdateRecentCompares();
+}
+
+/**
+ * @brief Height of the view: the dialog template height, plus the recent comparison list when it is expanded
+ */
+int COpenView::GetFormHeight() const
+{
+	return m_sizeOrig.cy + (m_bRecentComparesShown ? m_nRecentComparesHeight : 0);
+}
+
+/**
+ * @brief Expand or collapse the recent comparison list.
+ * Dynamic Layout resizes the list and moves the status line with the view.
+ */
+void COpenView::ShowRecentCompares(bool bShow)
+{
+	m_bRecentComparesShown = bShow;
+	m_nRecentComparesHeight = 0;
+	if (bShow)
+	{
+		// Prefer a 90-point list, but keep the expanded view within the MDI client.
+		const int nPreferredHeight = MulDiv(90, CClientDC(this).GetDeviceCaps(LOGPIXELSY), 72);
+		CFrameWnd* pFrame = GetParentFrame();
+		CWnd* pMdiClient = pFrame != nullptr ? pFrame->GetParent() : nullptr;
+		if (pMdiClient != nullptr)
+		{
+			CRect rcMdiClient, rcFrame, rcFrameClient;
+			pMdiClient->GetClientRect(&rcMdiClient);
+			pFrame->GetWindowRect(&rcFrame);
+			pMdiClient->ScreenToClient(&rcFrame);
+			pFrame->GetClientRect(&rcFrameClient);
+			const int nNonClientHeight = rcFrame.Height() - rcFrameClient.Height();
+			const int nAvailableHeight = (std::max)(0L, rcMdiClient.bottom - nNonClientHeight - m_sizeOrig.cy);
+			m_nRecentComparesHeight = (std::min)(nPreferredHeight, nAvailableHeight);
+		}
+		else
+			m_nRecentComparesHeight = nPreferredHeight;
+	}
+	if (bShow)
+		UpdateRecentCompares();
+	m_ctlRecentCompares.ShowWindow(bShow ? SW_SHOW : SW_HIDE);
+	// The frame lays out the view again, which takes the height of GetFormHeight() (OnWindowPosChanging)
+	static_cast<COpenFrame*>(GetParentFrame())->ResizeToView();
+	Invalidate();
+}
+
+/**
+ * @brief Fill the recent comparison list (newest first)
+ */
+void COpenView::UpdateRecentCompares()
+{
+	m_recentCompares = MruHelper::GetRecentCompares(GetOptionsMgr()->GetInt(OPT_MRU_MAX));
+	m_ctlRecentCompares.SetRedraw(FALSE);
+	m_ctlRecentCompares.DeleteAllItems();
+	for (int i = 0; i < static_cast<int>(m_recentCompares.size()); ++i)
+	{
+		m_ctlRecentCompares.InsertItem(i, m_recentCompares[i].title.c_str());
+		m_ctlRecentCompares.SetItemText(i, 1, m_recentCompares[i].params.c_str());
+	}
+	m_ctlRecentCompares.SetRedraw(TRUE);
+}
+
+/**
+ * @brief Title column takes 30% of the list width, the command line column the rest
+ */
+void COpenView::ResizeRecentComparesColumns()
+{
+	if (m_ctlRecentCompares.GetSafeHwnd() == nullptr)
+		return;
+	CHeaderCtrl* pHeader = m_ctlRecentCompares.GetHeaderCtrl();
+	if (pHeader == nullptr || pHeader->GetItemCount() < 2)
+		return;
+	CRect rc;
+	m_ctlRecentCompares.GetClientRect(&rc);
+	const int nTitleWidth = rc.Width() * 3 / 10;
+	m_ctlRecentCompares.SetColumnWidth(0, nTitleWidth);
+	m_ctlRecentCompares.SetColumnWidth(1, (std::max)(rc.Width() - nTitleWidth, 0));
+}
+
+/**
+ * @brief Open the comparison of the given list item, with the paths and options it was opened with
+ */
+void COpenView::OpenRecentCompare(int nItem)
+{
+	if (nItem < 0 || nItem >= static_cast<int>(m_recentCompares.size()))
+		return;
+	// Copy: this view can be closed before the comparison opens
+	const String params = m_recentCompares[nItem].params;
+	if (GetOptionsMgr()->GetBool(OPT_CLOSE_WITH_OK))
+		GetParentFrame()->PostMessage(WM_CLOSE);
+	GetMainFrame()->OpenRecentCompare(params);
+}
+
+void COpenView::OnSize(UINT nType, int cx, int cy)
+{
+	__super::OnSize(nType, cx, cy);
+	ResizeRecentComparesColumns();
+}
+
+void COpenView::OnRecentComparesShow()
+{
+	const bool bShow = IsDlgButtonChecked(IDC_RECENT_COMPARES_SHOW) == BST_CHECKED;
+	GetOptionsMgr()->SaveOption(OPT_SHOW_RECENT_COMPARES, bShow);
+	ShowRecentCompares(bShow);
+}
+
+void COpenView::OnDblclkRecentCompares(NMHDR *pNMHDR, LRESULT *pResult)
+{
+	OpenRecentCompare(reinterpret_cast<NMITEMACTIVATE*>(pNMHDR)->iItem);
+	*pResult = 0;
+}
+
+/**
+ * @brief Show the paths and options of the clicked recent comparison in the form.
+ */
+void COpenView::OnClickRecentCompares(NMHDR *pNMHDR, LRESULT *pResult)
+{
+	const int nItem = reinterpret_cast<NMITEMACTIVATE*>(pNMHDR)->iItem;
+	if (nItem >= 0 && nItem < static_cast<int>(m_recentCompares.size()))
+	{
+		// Recent entries store the command-line arguments without the executable name.
+		const String commandLine = _T("WinMergeU.exe ") + m_recentCompares[nItem].params;
+		MergeCmdLineInfo cmdInfo(commandLine.c_str());
+		if (cmdInfo.m_Files.GetSize() >= 2 && cmdInfo.m_Files.GetSize() <= 3)
+		{
+			const fileopenflags_t flags[] = {
+				cmdInfo.m_dwLeftFlags,
+				cmdInfo.m_Files.GetSize() == 2 ? cmdInfo.m_dwRightFlags : cmdInfo.m_dwMiddleFlags,
+				cmdInfo.m_dwRightFlags
+			};
+			for (int i = 0; i < 3; ++i)
+			{
+				m_strPath[i] = i < cmdInfo.m_Files.GetSize() ? cmdInfo.m_Files[i] : _T("");
+				m_bReadOnly[i] = (flags[i] & FFILEOPEN_READONLY) != 0;
+			}
+			m_strExt = cmdInfo.m_sFileFilter;
+			m_strUnpackerPipeline = cmdInfo.m_sUnpacker;
+			m_strPredifferPipeline = cmdInfo.m_sPreDiffer;
+			if (cmdInfo.m_bRecurse.has_value())
+				m_bRecurse = *cmdInfo.m_bRecurse;
+			UpdateData(FALSE);
+			UpdateButtonStates();
+
+			for (int i = 0; i < 3; ++i)
+				GetDlgItem(IDC_PATH0_COMBO + i)->Invalidate();
+		}
+	}
+	*pResult = 0;
 }
 
 void COpenView::OnEditAction(int msg, WPARAM wParam, LPARAM lParam)

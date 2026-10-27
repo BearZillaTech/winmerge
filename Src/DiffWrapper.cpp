@@ -32,13 +32,15 @@
 #include "unicoder.h"
 #include "TFile.h"
 #include "Exceptions.h"
-#include "parsers/crystallineparser.h"
 #include "SyntaxColors.h"
 #include "Logger.h"
 #include "MergeApp.h"
 #include "SubstitutionList.h"
 #include "codepage_detect.h"
 #include "cio.h"
+#include "SyntaxParserRegistry.h"
+#include "SyntaxParserHelper.h"
+#include "TableProps.h"
 
 using Poco::Exception;
 
@@ -230,74 +232,6 @@ static String convertToTString(const char* start, const char* end)
 	}
 }
 
-static unsigned GetLastLineCookie(unsigned dwCookie, int startLine, int endLine, const char **linbuf, CrystalLineParser::TextDefinition* enuType)
-{
-	if (!enuType)
-		return dwCookie;
-	for (int i = startLine; i <= endLine; ++i)
-	{
-		String text = convertToTString(linbuf[i], linbuf[i + 1]);
-		int nActualItems = 0;
-		std::vector<CrystalLineParser::TEXTBLOCK> blocks(text.length());
-		dwCookie = enuType->ParseLineX(dwCookie, text.c_str(), static_cast<int>(text.length()), blocks.data(), nActualItems);
-	}
-	return dwCookie;
-}
-
-static std::tuple<std::string, unsigned, std::vector<bool>> GetCommentsFilteredText(unsigned dwCookie, int startLine, int endLine, const char **linbuf, CrystalLineParser::TextDefinition* enuType)
-{
-	String filteredT;
-	std::vector<bool> allTextIsComment(endLine - startLine + 1);
-	for (int i = startLine; i <= endLine; ++i)
-	{
-		String text = convertToTString(linbuf[i], linbuf[i + 1]);
-		unsigned textlen = static_cast<unsigned>(text.size());
-		if (!enuType)
-		{
-			filteredT += text;
-		}
-		else
-		{
-			int nActualItems = 0;
-			std::vector<CrystalLineParser::TEXTBLOCK> blocks(textlen);
-			dwCookie = enuType->ParseLineX(dwCookie, text.c_str(), textlen, blocks.data(), nActualItems);
-
-			if (nActualItems == 0)
-			{
-				filteredT += text;
-			}
-			else
-			{
-				allTextIsComment[i - startLine] =
-					(nActualItems > 0 && blocks[0].m_nColorIndex == COLORINDEX_COMMENT);
-				for (int j = 0; j < nActualItems; ++j)
-				{
-					CrystalLineParser::TEXTBLOCK& block = blocks[j];
-					if (block.m_nColorIndex != COLORINDEX_COMMENT)
-					{
-						unsigned blocklen = (j < nActualItems - 1) ? (blocks[j + 1].m_nCharPos - block.m_nCharPos) : textlen - block.m_nCharPos;
-						filteredT.append(text.c_str() + block.m_nCharPos, blocklen);
-						tchar_t c = (blocklen == 0) ? 0 : *(text.c_str() + block.m_nCharPos);
-						if (c != '\r' && c != '\n')
-							allTextIsComment[i - startLine] = false;
-					}
-				}
-
-				if (blocks[nActualItems - 1].m_nColorIndex == COLORINDEX_COMMENT)
-				{
-					// If there is an inline comment, the EOL for that line will be deleted, so add the EOL.
-					size_t fullLen = linbuf[i + 1] - linbuf[i];
-					size_t len = linelen(linbuf[i], fullLen);
-					for (size_t j = len; j < fullLen; ++j)
-						filteredT += linbuf[i][j];
-				}
-			}
-		}
-	}
-
-	return { ucr::toUTF8(filteredT), dwCookie, allTextIsComment };
-}
-
 /**
  * @brief Replace a string inside a string with another string.
  * This function searches for a string inside another string an if found,
@@ -357,6 +291,66 @@ static std::string GetEOL(const std::string& str)
 	return "";
 }
 
+static bool iseolch(tchar_t ch)
+{
+	return ch == '\n' || ch == '\r';
+}
+
+static size_t linelen(const tchar_t* string, size_t maxlen)
+{
+	const tchar_t* q = string + maxlen;
+	do
+	{
+		maxlen = q - string;
+	} while (maxlen && iseolch(*--q));
+	return maxlen;
+}
+
+static std::unique_ptr<LangServices::ITextBuffer> CreateTextBuffer(const file_data& fileData)
+{
+	class DiffTextBuffer : public LangServices::ITextBuffer
+	{
+	public:
+		DiffTextBuffer(const file_data& fileData)
+			: m_fileData(fileData), m_lineCache(fileData.valid_lines - fileData.linbuf_base), m_lineCount(fileData.valid_lines - fileData.linbuf_base)
+		{
+		}
+		int GetLineCount() const override
+		{
+			return m_lineCount;
+		}
+		const tchar_t* GetLineChars(int nLineIndex) const override
+		{
+			if (nLineIndex < 0 || nLineIndex >= m_lineCount)
+				return nullptr;
+			if (m_lineCache[nLineIndex].empty())
+				m_lineCache[nLineIndex] = convertToTString(m_fileData.linbuf[nLineIndex + m_fileData.linbuf_base], m_fileData.linbuf[nLineIndex + 1 + m_fileData.linbuf_base]);
+			return m_lineCache[nLineIndex].c_str();
+		}
+		int GetLineLength(int nLineIndex) const override
+		{
+			if (nLineIndex < 0 || nLineIndex >= m_lineCount)
+				return 0;
+			if (m_lineCache[nLineIndex].empty())
+				m_lineCache[nLineIndex] = convertToTString(m_fileData.linbuf[nLineIndex + m_fileData.linbuf_base], m_fileData.linbuf[nLineIndex + 1 + m_fileData.linbuf_base]);
+			return static_cast<int>(linelen(m_lineCache[nLineIndex].c_str(), m_lineCache[nLineIndex].length()));
+		}
+		int GetFullLineLength(int nLineIndex) const override
+		{
+			if (nLineIndex < 0 || nLineIndex >= m_lineCount)
+				return 0;
+			if (m_lineCache[nLineIndex].empty())
+				m_lineCache[nLineIndex] = convertToTString(m_fileData.linbuf[nLineIndex + m_fileData.linbuf_base], m_fileData.linbuf[nLineIndex + 1 + m_fileData.linbuf_base]);
+			return static_cast<int>(m_lineCache[nLineIndex].length());
+		}
+	private:
+		const file_data& m_fileData;
+		mutable std::vector<String> m_lineCache;
+		int m_lineCount;
+	};
+	return std::unique_ptr<LangServices::ITextBuffer>(new DiffTextBuffer(fileData));
+}
+
 /**
  * @brief The main entry for post filtering.  Performs post-filtering, by setting comment blocks to trivial
  * @param [in, out]  thisob	Current change
@@ -378,28 +372,38 @@ int CDiffWrapper::PostFilter(PostFilterContext& ctxt, change* thisob, const file
 	
 	std::string lineDataLeft, lineDataRight;
 	std::vector<bool> allTextIsCommentLeft(qtyLinesLeft), allTextIsCommentRight(qtyLinesRight);
+	bool doFilterComments = m_options.m_filterCommentsLines && m_pFilterCommentsDef != nullptr;
 
-	if (m_options.m_filterCommentsLines)
+	if (doFilterComments)
 	{
-		ctxt.dwCookieLeft = GetLastLineCookie(ctxt.dwCookieLeft,
-			ctxt.nParsedLineEndLeft + 1, lineNumberLeft - 1, file_data_ary[0].linbuf + file_data_ary[0].linbuf_base, m_pFilterCommentsDef);
-		ctxt.dwCookieRight = GetLastLineCookie(ctxt.dwCookieRight,
-			ctxt.nParsedLineEndRight + 1, lineNumberRight - 1, file_data_ary[1].linbuf + file_data_ary[1].linbuf_base, m_pFilterCommentsDef);
+		if (!ctxt.m_bSyntaxParserInitialized[0])
+		{
+			ctxt.m_pSyntaxParser[0] = LangServices::SyntaxParserRegistry::GetInstance().CreateParser(m_pFilterCommentsDef->type);
+			ctxt.m_pTextBuffer[0] = CreateTextBuffer(file_data_ary[0]);
+			if (ctxt.m_pSyntaxParser[0] && ctxt.m_pTextBuffer[0])
+				ctxt.m_pSyntaxParser[0]->SetTextBuffer(ctxt.m_pTextBuffer[0].get());
+			ctxt.m_bSyntaxParserInitialized[0] = true;
+		}
+		if (!ctxt.m_bSyntaxParserInitialized[1])
+		{
+			ctxt.m_pSyntaxParser[1] = LangServices::SyntaxParserRegistry::GetInstance().CreateParser(m_pFilterCommentsDef->type);
+			ctxt.m_pTextBuffer[1] = CreateTextBuffer(file_data_ary[1]);
+			if (ctxt.m_pSyntaxParser[1] && ctxt.m_pTextBuffer[1])
+				ctxt.m_pSyntaxParser[1]->SetTextBuffer(ctxt.m_pTextBuffer[1].get());
+			ctxt.m_bSyntaxParserInitialized[1] = true;
+		}
+	}
 
-		ctxt.nParsedLineEndLeft = lineNumberLeft + qtyLinesLeft - 1;
-		ctxt.nParsedLineEndRight = lineNumberRight + qtyLinesRight - 1;;
+	if (doFilterComments && ctxt.m_pSyntaxParser[0] && ctxt.m_pSyntaxParser[1])
+	{
+		int nLineEndLeft = lineNumberLeft + qtyLinesLeft - 1;
+		int nLineEndRight = lineNumberRight + qtyLinesRight - 1;
 
-		auto resultLeft = GetCommentsFilteredText(ctxt.dwCookieLeft,
-			lineNumberLeft, ctxt.nParsedLineEndLeft, file_data_ary[0].linbuf + file_data_ary[0].linbuf_base, m_pFilterCommentsDef);
-		lineDataLeft = std::move(std::get<0>(resultLeft));
-		ctxt.dwCookieLeft = std::get<1>(resultLeft);
-		allTextIsCommentLeft = std::move(std::get<2>(resultLeft));
-
-		auto resultRight = GetCommentsFilteredText(ctxt.dwCookieRight,
-			lineNumberRight, ctxt.nParsedLineEndRight, file_data_ary[1].linbuf + file_data_ary[1].linbuf_base, m_pFilterCommentsDef);
-		lineDataRight = std::move(std::get<0>(resultRight));
-		ctxt.dwCookieRight = std::get<1>(resultRight);
-		allTextIsCommentRight = std::move(std::get<2>(resultRight));
+		// Use SyntaxParserHelper for unified comment filtering
+		lineDataLeft = SyntaxParserHelper::GetCommentsFilteredText(
+			ctxt.m_pSyntaxParser[0].get(), lineNumberLeft, nLineEndLeft, allTextIsCommentLeft); 
+		lineDataRight = SyntaxParserHelper::GetCommentsFilteredText(
+			ctxt.m_pSyntaxParser[1].get(), lineNumberRight, nLineEndRight, allTextIsCommentRight);
 	}
 	else
 	{
@@ -771,6 +775,9 @@ bool CDiffWrapper::RunFileDiff()
 	if (m_bUseDiffList)
 		m_nDiffs = m_pDiffList->GetSize();
 
+	PluginPipelineContext pipelineContext;
+	pipelineContext.filteredFilenames = m_sToFindPrediffer;
+
 	for (file = 0; file < aFiles.GetSize(); file++)
 	{
 		if (m_bPluginsEnabled)
@@ -782,7 +789,9 @@ bool CDiffWrapper::RunFileDiff()
 
 			// this can only fail if the data can not be saved back (no more
 			// place on disk ???) What to do then ??
-			if (m_infoPrediffer && !m_infoPrediffer->Prediffing(file, strFileTemp[file], m_sToFindPrediffer, m_bPathsAreTemp, { strFileTemp[file] }))
+			pipelineContext.variables = { strFileTemp[file] };
+			pipelineContext.tableProps = m_tableProps[file];
+			if (m_infoPrediffer && !m_infoPrediffer->Prediffing(file, strFileTemp[file], m_bPathsAreTemp, pipelineContext))
 			{
 				// display a message box
 				String sError = strutils::format_string2(
@@ -1367,13 +1376,22 @@ CDiffWrapper::LoadWinMergeDiffsFromDiffUtilsScript(struct change * script, const
 						last1 = first1 + thisob->inserted - 1;
 						translate_range (&file_data_ary[0], first0, last0, &trans_a0, &trans_b0);
 						translate_range (&file_data_ary[1], first1, last1, &trans_a1, &trans_b1);
-						const int qtyLinesLeft = (trans_b0 - trans_a0) + 1
-							- ((!thisob->link && file_data_ary[0].missing_newline) ? 1 : 0); //Determine quantity of lines in this block for left side
-						const int qtyLinesRight = (trans_b1 - trans_a1) + 1
-							- ((!thisob->link && file_data_ary[1].missing_newline) ? 1 : 0); //Determine quantity of lines in this block for right side
-
 						if (op == OP_TRIVIAL && m_options.m_bCompletelyBlankOutIgnoredDiffereneces)
 						{
+							const bool adjustLeftForMissingNewline =
+								!thisob->link &&
+								thisob->deleted > 0 &&
+								thisob->line0 + thisob->deleted == file_data_ary[0].valid_lines &&
+								file_data_ary[0].missing_newline;
+							const bool adjustRightForMissingNewline =
+								!thisob->link &&
+								thisob->inserted > 0 &&
+								thisob->line1 + thisob->inserted == file_data_ary[1].valid_lines &&
+								file_data_ary[1].missing_newline;
+							const int qtyLinesLeft = (trans_b0 - trans_a0) + 1
+								- (adjustLeftForMissingNewline ? 1 : 0); // Determine quantity of lines in this block for left side
+							const int qtyLinesRight = (trans_b1 - trans_a1) + 1
+								- (adjustRightForMissingNewline ? 1 : 0); // Determine quantity of lines in this block for right side
 							if (qtyLinesLeft == qtyLinesRight)
 							{
 								op = OP_NONE;
@@ -1394,12 +1412,22 @@ CDiffWrapper::LoadWinMergeDiffsFromDiffUtilsScript(struct change * script, const
 				{
 					if (thisob->trivial)
 						op = OP_TRIVIAL;
-					const int qtyLinesLeft = (trans_b0 - trans_a0) + 1
-						- ((!thisob->link && file_data_ary[0].missing_newline) ? 1 : 0); //Determine quantity of lines in this block for left side
-					const int qtyLinesRight = (trans_b1 - trans_a1) + 1
-						- ((!thisob->link && file_data_ary[1].missing_newline) ? 1 : 0); //Determine quantity of lines in this block for right side
 					if (op == OP_TRIVIAL && m_options.m_bCompletelyBlankOutIgnoredDiffereneces)
 					{
+						const bool adjustLeftForMissingNewline =
+							!thisob->link &&
+							thisob->deleted > 0 &&
+							thisob->line0 + thisob->deleted == file_data_ary[0].valid_lines &&
+							file_data_ary[0].missing_newline;
+						const bool adjustRightForMissingNewline =
+							!thisob->link &&
+							thisob->inserted > 0 &&
+							thisob->line1 + thisob->inserted == file_data_ary[1].valid_lines &&
+							file_data_ary[1].missing_newline;
+						const int qtyLinesLeft = (trans_b0 - trans_a0) + 1
+							- (adjustLeftForMissingNewline ? 1 : 0); // Determine quantity of lines in this block for left side
+						const int qtyLinesRight = (trans_b1 - trans_a1) + 1
+							- (adjustRightForMissingNewline ? 1 : 0); // Determine quantity of lines in this block for right side
 						if (qtyLinesLeft == qtyLinesRight)
 						{
 							op = OP_NONE;
@@ -1446,6 +1474,133 @@ struct Comp02Functor
 	const file_data *inf10_;
 	const file_data *inf12_;
 };
+
+/**
+ * @brief An inserted block of one of the two comparisons of a 3-way compare,
+ * and how far it can be moved.
+ *
+ * An inserted block whose first line equals the line after it is just as
+ * well the block that starts one line further down, and likewise upwards.
+ */
+struct SlidingInsertion
+{
+	SlidingInsertion(std::vector<DiffRangeInfo>& diffs, const file_data& inf,
+		const MovedLines* pMovedLines, MovedLines::SIDE side)
+		: m_diffs(diffs)
+		, m_pMovedLines(pMovedLines)
+		, m_side(side)
+		, m_linbuf(inf.linbuf + inf.linbuf_base)
+		, m_nLines(inf.valid_lines - inf.linbuf_base)
+	{
+	}
+
+	/** @brief Go to the next inserted block from the current index on. */
+	bool Find()
+	{
+		for (; m_index < m_diffs.size(); ++m_index)
+		{
+			const DiffRangeInfo& dr = m_diffs[m_index];
+			if (dr.op != OP_TRIVIAL && dr.end[0] == dr.begin[0] - 1 && dr.end[1] >= dr.begin[1])
+				break;
+		}
+		if (m_index >= m_diffs.size())
+			return false;
+		if (m_index == m_rangeIndex)
+			return true; // still the same block
+		m_rangeIndex = m_index;
+
+		// The lines between two differences are common to both files, so
+		// the block can move over them as long as the lines repeat
+		const DiffRangeInfo& dr = m_diffs[m_index];
+		const int nFirstFree = (m_index > 0) ? (std::max)(m_diffs[m_index - 1].end[1] + 1, 0) : 0;
+		const int nLimit = (m_index + 1 < m_diffs.size()) ? (std::min)(m_diffs[m_index + 1].begin[1], m_nLines) : m_nLines;
+		int nUp = 0, nDown = 0;
+		// a block with lines of a moved block stays: those lines are recorded by position
+		bool bMoved = false;
+		for (int line = dr.begin[1]; m_pMovedLines != nullptr && line <= dr.end[1] && !bMoved; ++line)
+			bMoved = m_pMovedLines->LineInBlock(line, m_side) != -1;
+		if (bMoved)
+		{
+			m_lowest = m_highest = dr.begin[0];
+			return true;
+		}
+		while (dr.begin[1] - nUp - 1 >= nFirstFree && LinesEqual(dr.begin[1] - nUp - 1, dr.end[1] - nUp))
+			++nUp;
+		while (dr.end[1] + nDown + 1 < nLimit && LinesEqual(dr.begin[1] + nDown, dr.end[1] + nDown + 1))
+			++nDown;
+		m_lowest = dr.begin[0] - nUp;
+		m_highest = dr.begin[0] + nDown;
+		return true;
+	}
+
+	/** @brief Move the block to the given position in the middle file. */
+	void MoveTo(int position)
+	{
+		DiffRangeInfo& dr = m_diffs[m_index];
+		const int nDelta = position - dr.begin[0];
+		for (int file = 0; file < 2; ++file)
+		{
+			dr.begin[file] += nDelta;
+			dr.end[file] += nDelta;
+		}
+	}
+
+	int Position() const { return m_diffs[m_index].begin[0]; }
+
+	bool LinesEqual(int line1, int line2) const
+	{
+		return line_cmp(m_linbuf[line1], m_linbuf[line1 + 1] - m_linbuf[line1],
+			m_linbuf[line2], m_linbuf[line2 + 1] - m_linbuf[line2]) == 0;
+	}
+
+	std::vector<DiffRangeInfo>& m_diffs; /**< differences of the middle file (index 0) and another file (index 1) */
+	const char **m_linbuf;               /**< lines of the other file */
+	const MovedLines* m_pMovedLines;     /**< moved lines of the other file, or nullptr */
+	MovedLines::SIDE m_side;
+	int m_nLines;
+	size_t m_index = 0;
+	size_t m_rangeIndex = static_cast<size_t>(-1); /**< block the range below is of */
+	int m_lowest = 0;  /**< first position in the middle file the block can be at */
+	int m_highest = 0; /**< last position in the middle file the block can be at */
+};
+
+/**
+ * @brief Bring blocks that the left and the right file insert in the same
+ * place of the middle file to the same position.
+ *
+ * The comparisons of the middle file with the left and with the right file
+ * do not always settle on the same of the positions an inserted block can
+ * be at. Blocks that both files insert in the same place then look like two
+ * unrelated insertions next to each other, instead of one difference in
+ * which the two files agree or conflict.
+ *
+ * Only blocks that can meet are moved, and only to where they meet: no
+ * difference that the two comparisons agreed on is pulled apart.
+ */
+static void AlignInsertions(std::vector<DiffRangeInfo>& diff10, const file_data& inf0, const MovedLines* pMovedLines0,
+	std::vector<DiffRangeInfo>& diff12, const file_data& inf2, const MovedLines* pMovedLines2)
+{
+	SlidingInsertion left(diff10, inf0, pMovedLines0, MovedLines::SIDE::RIGHT);
+	SlidingInsertion right(diff12, inf2, pMovedLines2, MovedLines::SIDE::LEFT);
+	while (left.Find() && right.Find())
+	{
+		if (left.m_highest < right.m_lowest)
+			++left.m_index;
+		else if (right.m_highest < left.m_lowest)
+			++right.m_index;
+		else
+		{
+			if (left.Position() != right.Position())
+			{
+				const int position = (std::min)(left.m_highest, right.m_highest);
+				left.MoveTo(position);
+				right.MoveTo(position);
+			}
+			++left.m_index;
+			++right.m_index;
+		}
+	}
+}
 
 /**
  * @brief Walk the diff utils change script, building the WinMerge list of diff blocks
@@ -1591,6 +1746,10 @@ CDiffWrapper::LoadWinMergeDiffsFromDiffUtilsScript3(
 			}
 		}
 	}
+
+	const bool bMovedBlocks = GetDetectMovedBlocks();
+	AlignInsertions(diff10.GetDiffRangeInfoVector(), inf10[1], bMovedBlocks ? GetMovedLines(0) : nullptr,
+		diff12.GetDiffRangeInfoVector(), inf12[1], bMovedBlocks ? GetMovedLines(2) : nullptr);
 
 	Make3wayDiff(m_pDiffList->GetDiffRangeInfoVector(), diff10.GetDiffRangeInfoVector(), diff12.GetDiffRangeInfoVector(), 
 		Comp02Functor(inf10, inf12), 
@@ -1878,7 +2037,7 @@ void CDiffWrapper::SetSubstitutionList(std::shared_ptr<SubstitutionList> pSubsti
 
 void CDiffWrapper::SetFilterCommentsSourceDef(const String& ext)
 {
-	m_pFilterCommentsDef = CrystalLineParser::GetTextType(ext.c_str());
+	m_pFilterCommentsDef = LangServices::GetTextType(ext.c_str());
 }
 
 /**

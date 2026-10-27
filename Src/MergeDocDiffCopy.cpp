@@ -12,7 +12,7 @@
 #include "MergeEditView.h"
 #include "DiffList.h"
 #include "MergeLineFlags.h"
-#include "MergeFrameCommon.h"
+#include "MergeLogger.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -309,6 +309,9 @@ void CMergeDoc::DoAutoMerge(int dstPane)
 {
 	if (m_nBuffers < 3)
 		return;
+
+	m_nMergeBasePane = 2 - dstPane;
+
 	const int lastDiff = m_diffList.GetSize() - 1;
 	const int firstDiff = 0;
 	bool bGroupWithPrevious = false;
@@ -399,8 +402,9 @@ void CMergeDoc::DoAutoMerge(int dstPane)
 		pViewDst->SelectDiff(nDiff, true, false);
 
 	ShowMessageBox(
-		strutils::format_string2(
-			_("Automatic merges: %1\nUnresolved conflicts: %2"),
+		strutils::format_string3(
+			_("Automatic merge completed.\n\n%1\n\nAutomatic merges: %2\nUnresolved conflicts: %3"),
+			GetMergePaneRoles(),
 			strutils::format(_T("%d"), autoMergedCount),
 			strutils::format(_T("%d"), unresolvedConflictCount)),
 		MB_ICONINFORMATION);
@@ -488,7 +492,10 @@ bool CMergeDoc::TransformText(String& text)
 		return false;
 	const int nActivePane = pwndActiveWindow->m_nThisPane;
 	bool bChanged = false;
-	m_editorScriptInfo.TransformText(nActivePane, text, { m_filePaths[nActivePane] }, bChanged);
+	PluginPipelineContext pipelineContext;
+	pipelineContext.variables = { m_filePaths[nActivePane] };
+	pipelineContext.tableProps = GetCurrentTableProperties(nActivePane);
+	m_editorScriptInfo.TransformText(nActivePane, text, pipelineContext, bChanged);
 	return bChanged;
 }
 
@@ -632,7 +639,7 @@ bool CMergeDoc::ListCopy(int srcPane, int dstPane, int nDiff /* = -1*/,
 		// changes, but none that concern the source text
 		sbuf.SetModified(bSrcWasMod);
 
-		CMergeFrameCommon::LogCopyDiff(srcPane, dstPane, nDiff);
+		MergeLogger::LogCopyDiff(srcPane, dstPane, nDiff);
 	}
 
 	suppressRescan.Clear(); // done suppress Rescan
@@ -727,7 +734,7 @@ bool CMergeDoc::LineListCopy(int srcPane, int dstPane, int nDiff, int firstLine,
 	// changes, but none that concern the source text
 	sbuf.SetModified(bSrcWasMod);
 
-	CMergeFrameCommon::LogCopyLines(srcPane, dstPane, firstLine, lastLine);
+	MergeLogger::LogCopyLines(srcPane, dstPane, firstLine, lastLine);
 
 	suppressRescan.Clear(); // done suppress Rescan
 	FlushAndRescan();
@@ -845,7 +852,7 @@ bool CMergeDoc::InlineDiffListCopy(int srcPane, int dstPane, int nDiff, int firs
 	// changes, but none that concern the source text
 	sbuf.SetModified(bSrcWasMod);
 
-	CMergeFrameCommon::LogCopyInlineDiffs(srcPane, dstPane, nDiff, firstWordDiff, lastWordDiff);
+	MergeLogger::LogCopyInlineDiffs(srcPane, dstPane, nDiff, firstWordDiff, lastWordDiff);
 
 	suppressRescan.Clear(); // done suppress Rescan
 	FlushAndRescan();
@@ -1187,7 +1194,7 @@ bool CMergeDoc::CharacterListCopy(int srcPane, int dstPane, int activePane, int 
 	// changes, but none that concern the source text
 	sbuf.SetModified(bSrcWasMod);
 
-	CMergeFrameCommon::LogCopyCharacters(srcPane, dstPane,  nDiff, ptStart, ptEnd);
+	MergeLogger::LogCopyCharacters(srcPane, dstPane,  nDiff, ptStart, ptEnd);
 
 	suppressRescan.Clear(); // done suppress Rescan
 	FlushAndRescan();
